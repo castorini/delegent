@@ -1,0 +1,8 @@
+system,union_recall_percent,sol_cost_usd,recall_evaluation_questions,cost_generation_trajectories
+BM25@20,78.856,0.00,3741,0
+BM25@50,91.927,0.00,3741,0
+AllSol1,81.235,128.31,3741,7490
+AllSol2,82.518,270.28,3741,7490
+AllSol3,83.213,423.50,3741,7490
+AllSol4,84.122,594.72,3741,7490
+AllSol5,84.710,754.78,3741,7490

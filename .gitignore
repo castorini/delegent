@@ -216,3 +216,55 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Delegent credentials and machine-local configuration
+.env*
+!.env.example
+.curlrc*
+.netrc
+*.pem
+*.key
+*.token
+*credentials*
+*secrets*
+oauth*.json
+tokens/
+configs/*.local.json
+
+# Private datasets, checkpoints, run state, and model outputs
+data/
+outputs/
+output/
+runs/
+artifacts/
+receipts/
+frozen-receipts/
+checkpoints/
+adapters/
+qrels/
+**/qrels/
+answers/
+raw-responses/
+raw_responses/
+model-responses/
+model_responses/
+logs/
+scratch/
+.scratch*/
+.remote_patch/
+*qrels*.json
+*qids*.txt
+*qids*.json
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.jsonl
+*.log
+
+# Small synthetic public fixtures
+!examples/*.jsonl
+!tests/fixtures/*.jsonl
+
+# OS metadata
+.DS_Store

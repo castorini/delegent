@@ -1,0 +1,17 @@
+{
+  "schema_version": "delegent-routed-family-config-v1",
+  "source_records": "demo_source.jsonl",
+  "output_dir": "demo-output",
+  "cap": 2,
+  "frontier_actor": "frontier",
+  "delegate_actor": "delegate",
+  "frontier_prefixes": [2, 1, 0],
+  "prompt": {
+    "context_hits_per_search": 1,
+    "passage_tokens": 40
+  },
+  "generation": {
+    "max_attempts": 2,
+    "deterministic_repair": true
+  }
+}
