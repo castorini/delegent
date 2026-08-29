@@ -18,7 +18,7 @@ assigns the early slots to GPT-5.6 Sol and the suffix to Gemma. HotpotQA uses `p
 
 ## Matched-prefix construction
 
-Routed HotpotQA arms are derived from a completed AllSol10 trajectory:
+Routed HotpotQA arms are derived from a completed ten-call Sol-Only trajectory:
 
 1. copy the direct retrieval exactly;
 2. copy the first `n` Sol generation and search records exactly;
@@ -26,7 +26,7 @@ Routed HotpotQA arms are derived from a completed AllSol10 trajectory:
 4. generate slots `n+1` through `10` with Gemma;
 5. preserve retry, repair, and token telemetry.
 
-AllSol1 through AllSol9 are zero-call prefix views of AllSol10. This prevents stochastic regeneration or prompt drift from being mistaken for a routing effect.
+Sol-Only prefixes with one through nine calls are zero-call views of the completed ten-call Sol-Only trajectory. This prevents stochastic regeneration or prompt drift from being mistaken for a routing effect.
 
 ## Qrel-blind generation
 
@@ -68,11 +68,11 @@ RRF(d) = sum_r 1 / (60 + rank_r(d)),
 
 then evaluates the top 20 fused documents.
 
-## SQuAD metric and split
+## SQuAD metric and sample
 
 SQuAD union recall is the fraction of questions for which the deduplicated retrieval union contains at least one positive document.
 
-An independent eight-question pilot is excluded first. The remaining supported questions are ranked by a frozen salted SHA-256 digest of each QID and divided into equal selection and confirmation halves. The reported table uses the selection half; it should not be interpreted as untouched confirmation evidence.
+An independent eight-question pilot is excluded first. The remaining supported questions are ranked by a frozen salted SHA-256 digest of each QID, and the first 992 form the fixed random evaluation sample used by both direct-retrieval depths and every Sol-call prefix. The reported sample should not be interpreted as untouched confirmation evidence.
 
 ## Cost accounting
 

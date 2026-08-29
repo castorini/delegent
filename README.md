@@ -20,20 +20,13 @@ Fixed-Schedule Model Routing for Cost-Effective Search
 
 Delegent is a controlled framework for routing search actions between a frontier model and a local small language model. The frontier model performs the early decomposition and search actions; a post-trained Gemma 4 E4B continues from the same retrieval history. A direct BM25 query is shared across systems and sits outside the generated-call budget.
 
-On 366 projected HotpotQA questions, five GPT-5.6 Sol searches followed by five post-trained Gemma searches reach **74.016% union fact coverage**, compared with **74.672%** for ten Sol searches, while reducing measured paid Sol cost by **54.2%**. On the frozen 3,741-question SQuAD selection split, a single wider BM25 retrieval is stronger than every tested Sol-only trajectory, showing that effective routing must also decide when *not* to invoke another model.
+On 366 projected HotpotQA questions, five GPT-5.6 Sol searches followed by five post-trained Gemma searches reach **74.016% union fact coverage**, compared with **74.672%** for ten Sol searches, while reducing measured paid Sol cost by **54.2%**. The official Gemma checkpoint reaches **72.901%** under the same 5+5 schedule, showing that routing remains useful without post-training and improves further with it. On the same randomly sampled 992 SQuAD questions, 50-document direct retrieval starts at **90.827%** union recall and five Sol calls reach **92.036%**, so this easier setting is already near saturation.
 
 ## How Delegent Works
 
-```mermaid
-flowchart LR
-    Q[Question] --> D[Direct BM25 retrieval]
-    D --> S[Frontier prefix<br/>Sol slots 1...n]
-    S --> G[Local suffix<br/>Gemma slots n+1...10]
-    G --> F[Union or RRF fusion]
-    F --> C[Score after generation completes]
-
-    P[(Positive documents<br/>and required facts)] -. scorer only .-> C
-```
+<p align="center">
+  <img src="assets/fixed_search_call_routing.png" width="1050" alt="Fixed search-call model routing with a Sol prefix and Gemma suffix">
+</p>
 
 For a ten-search cap, a routed policy is a deterministic schedule
 
@@ -42,7 +35,7 @@ $$
 \qquad n+m=10.
 $$
 
-Every routed HotpotQA run copies the direct retrieval and first \(n\) searches from the canonical AllSol10 record exactly, then generates only the remaining Gemma suffix. The prompt, output schema, corpus, retrieval settings, evidence windows, and fusion rule remain fixed.
+We use **Sol-Only** for a schedule in which every generated search call is assigned to Sol. Every routed HotpotQA run copies the direct retrieval and first \(n\) searches from the canonical ten-call Sol-Only record exactly, then generates only the remaining Gemma suffix. The prompt, output schema, corpus, retrieval settings, evidence windows, and fusion rule remain fixed.
 
 Generation is qrel-blind: neither actor receives qrels, reference answers, future Sol searches, or evaluation metrics. Before opening qrels, the scorer validates a completion manifest against the arm, question count, and cryptographic identity of the finished record set. See [the evaluation protocol](docs/evaluation-protocol.md) for the full contract.
 
@@ -65,55 +58,60 @@ python scripts/run_routed_family.py \
   --dry-run
 ```
 
-The dry run validates synthetic canonical records and all configured schedules, hashes the first delegate prompt for each schedule, and performs no model, retrieval, or file-writing calls. A live run additionally requires a canonical AllSol10 record set, a BM25 endpoint, and an OpenAI-compatible Gemma endpoint. Credentials belong in environment variables, never in configuration files. See [REPRODUCING.md](REPRODUCING.md) for the staged workflow and [`configs/hotpotqa-c10.json`](configs/hotpotqa-c10.json) for the secret-free HotpotQA template.
+The dry run validates synthetic canonical records and all configured schedules, hashes the first delegate prompt for each schedule, and performs no model, retrieval, or file-writing calls. A live run additionally requires a canonical ten-call Sol-Only record set, a BM25 endpoint, and an OpenAI-compatible Gemma endpoint. Credentials belong in environment variables, never in configuration files. See [REPRODUCING.md](REPRODUCING.md) for the staged workflow and [`configs/hotpotqa-c10.json`](configs/hotpotqa-c10.json) for the secret-free HotpotQA template.
 
 ## Results
 
-Both benchmarks are projected onto the fixed `fineweb-edu-100b-karpathy` corpus. HotpotQA uses 366 held-out multi-hop questions. SQuAD reports the frozen 3,741-question selection split after excluding an independent eight-question pilot.
-
-<p align="center">
-  <img src="assets/routing_union_coverage.png" width="950" alt="Delegent quality-cost routing curves on HotpotQA and SQuAD">
-</p>
+Both benchmarks are projected onto the fixed `fineweb-edu-100b-karpathy` corpus. HotpotQA uses 366 held-out multi-hop questions. SQuAD uses the same randomly sampled 992 questions for every direct-retrieval depth and Sol-call prefix.
 
 ### HotpotQA fixed ten-slot routing
 
-Union fact is macro coverage over the deduplicated retrieval union. RRF@20 is required-fact coverage after reciprocal-rank fusion with \(k=60\). Sol cost is the aggregate API-equivalent cost over 366 questions; savings are relative to AllSol10. Local Gemma inference is estimated separately at roughly 1/200 of Sol inference and rounds to $0.00 at the table's precision.
+<p align="center">
+  <img src="assets/hotpotqa_routing_curves.png" width="950" alt="HotpotQA Sol-Gemma and Sol-Only routing curves">
+</p>
 
-| System | Union fact | RRF@20 | Sol cost | Savings |
+Union fact is macro coverage over the deduplicated retrieval union. RRF@20 is required-fact coverage after reciprocal-rank fusion with \(k=60\). Sol cost is the aggregate API-equivalent cost over 366 questions; savings are relative to ten-call Sol-Only with 20-document direct retrieval. Local Gemma inference is estimated separately at roughly 1/200 of Sol inference and rounds to $0.00 at the table's precision.
+
+| Schedule | Union fact SFT | Union fact official | RRF@20 SFT | RRF@20 official | Sol cost | Savings |
+|---|---:|---:|---:|---:|---:|---:|
+| 0 Sol + 10 Gemma | 63.925 | 62.855 | 58.438 | 57.482 | $0.00 | 100.0% |
+| 1 Sol + 9 Gemma | 69.645 | 67.300 | 65.638 | 64.089 | $8.38 | 92.0% |
+| 2 Sol + 8 Gemma | 71.689 | 70.237 | 68.502 | 66.207 | $17.46 | 83.2% |
+| 3 Sol + 7 Gemma | 72.750 | 71.876 | 69.153 | 68.529 | $26.88 | 74.2% |
+| 4 Sol + 6 Gemma | 73.898 | 72.372 | 70.642 | 68.424 | $37.07 | 64.4% |
+| **5 Sol + 5 Gemma** | **74.016** | **72.901** | **71.102** | **69.645** | **$47.72** | **54.2%** |
+| 6 Sol + 4 Gemma | 73.761 | 73.593 | 71.553 | 70.497 | $58.84 | 43.5% |
+| 7 Sol + 3 Gemma | 74.604 | 74.003 | 70.961 | 70.633 | $69.32 | 33.5% |
+| 8 Sol + 2 Gemma | 74.718 | 74.194 | 71.453 | 70.779 | $80.37 | 22.9% |
+| 9 Sol + 1 Gemma | 74.900 | 74.809 | 71.599 | 71.348 | $91.92 | 11.8% |
+
+| Checkpoint-independent baseline | Sol calls | Union fact | RRF@20 | Sol cost |
 |---|---:|---:|---:|---:|
-| BM25@20 | 54.112 | 54.112 | $0.00 | 100.0% |
-| BM25@50 | 59.253 | 54.112 | $0.00 | 100.0% |
-| 1 Sol + 9 Gemma | 69.645 | 65.638 | $8.38 | 92.0% |
-| 2 Sol + 8 Gemma | 71.689 | 68.502 | $17.46 | 83.2% |
-| 3 Sol + 7 Gemma | 72.750 | 69.153 | $26.88 | 74.2% |
-| 4 Sol + 6 Gemma | 73.898 | 70.642 | $37.07 | 64.4% |
-| **5 Sol + 5 Gemma** | **74.016** | **71.102** | **$47.72** | **54.2%** |
-| 5 Sol + 5 Gemma (official base) | 72.901 | 69.645 | $47.72 | 54.2% |
-| 6 Sol + 4 Gemma | 73.761 | 71.553 | $58.84 | 43.5% |
-| 7 Sol + 3 Gemma | 74.604 | 70.961 | $69.32 | 33.5% |
-| 8 Sol + 2 Gemma | 74.718 | 71.453 | $80.37 | 22.9% |
-| 9 Sol + 1 Gemma | 74.900 | 71.599 | $91.92 | 11.8% |
-| 10 Sol + 0 Gemma (AllSol10) | 74.672 | 71.394 | $104.21 | 0.0% |
-| 10 Gemma (post-trained) | 63.925 | 58.438 | $0.00 | 100.0% |
-| 10 Gemma (official base) | 62.855 | 57.482 | $0.00 | 100.0% |
+| BM25@20 direct | 0 | 54.112 | 54.112 | $0.00 |
+| BM25@50 direct | 0 | 59.253 | 54.112 | $0.00 |
+| Sol-Only (20-doc direct) | 10 | 74.672 | 71.394 | $104.21 |
+| Sol-Only (50-doc direct) | 10 | 74.672 | 69.950 | $83.23 |
 
-The 5+5 point retains 99.12% of AllSol10 union fact coverage and is the least expensive tested schedule above 74.0%. This is an empirical operating point on the evaluated set, not a guarantee for unseen tasks. Machine-readable values are in [`results/hotpotqa.csv`](results/hotpotqa.csv).
+The 5+5 post-trained point retains 99.12% of ten-call Sol-Only union fact coverage while reducing paid Sol cost by 54.2%. The complete official-checkpoint curve shows that fixed routing remains useful without SFT; the post-trained curve is stronger when more calls are delegated to Gemma. Machine-readable values are in [`results/hotpotqa.csv`](results/hotpotqa.csv) and [`results/hotpotqa_sol_only.csv`](results/hotpotqa_sol_only.csv).
 
 ### SQuAD direct retrieval and Sol prefixes
 
-Union recall is the percentage of selection questions retrieving at least one positive document. Recall is evaluated on 3,741 selection questions, while the Sol cost column reflects generation across all 7,490 supported trajectories used to materialize the prefix records.
+<p align="center">
+  <img src="assets/squad_sol_only_curves.png" width="950" alt="SQuAD Sol-Only curves with 20- and 50-document direct retrieval">
+</p>
 
-| System | Union recall | Sol cost |
-|---|---:|---:|
-| BM25@20 | 78.856 | $0.00 |
-| **BM25@50** | **91.927** | **$0.00** |
-| AllSol1 | 81.235 | $128.31 |
-| AllSol2 | 82.518 | $270.28 |
-| AllSol3 | 83.213 | $423.50 |
-| AllSol4 | 84.122 | $594.72 |
-| AllSol5 | 84.710 | $754.78 |
+Union recall is the percentage of the same 992 questions retrieving at least one positive document. At zero Sol calls, each curve is direct retrieval only.
 
-BM25@50 may return 50 passages, whereas the five-call Sol trajectory returns at most 45. The supported conclusion is therefore narrow: on this selection split and metric, one wider direct retrieval is stronger than the tested generated-query trajectories. Machine-readable values are in [`results/squad.csv`](results/squad.csv).
+| Sol calls | Sol-Only, 20-doc direct | Sol-Only, 50-doc direct |
+|---:|---:|---:|
+| 0 | 78.024 | 90.827 |
+| 1 | 80.343 | 91.230 |
+| 2 | 81.552 | 91.331 |
+| 3 | 82.157 | 91.532 |
+| 4 | 82.661 | 91.633 |
+| 5 | 82.964 | 92.036 |
+
+The 50-document starting point is already near saturation: five additional Sol calls add 1.210 recall points. Machine-readable values are in [`results/squad.csv`](results/squad.csv).
 
 ## Repository
 

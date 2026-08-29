@@ -28,7 +28,7 @@ Dry-run mode validates the synthetic source records and schedules and hashes the
 
 For a live run, copy [`configs/hotpotqa-c10.json`](configs/hotpotqa-c10.json) to a local ignored file and add the deployment-specific `retrieval` and `delegate` blocks. Keep tokens in the environment variables named by `token_env` and `api_key_env`; never put credential values in JSON. See [`configs/README.md`](configs/README.md) for the complete schema.
 
-## 3. Prepare canonical AllSol records
+## 3. Prepare canonical Sol-Only records
 
 The public routed runner consumes a completed canonical frontier-only record set. Each JSON record must contain:
 
@@ -60,9 +60,9 @@ A run is admissible only when:
 
 Before each delegate call, the runner durably records a content-minimal intent. A successful response produces a receipt containing only hashes, token/timing telemetry, and validation status; transport uncertainty produces an immutable unknown-spend receipt and stops that question without retry. On `--resume`, unresolved or unknown-spend attempts fail closed. An accepted response whose final routed record was never committed also fails closed because raw responses are deliberately not stored.
 
-## 5. Derive zero-call Sol prefix views
+## 5. Derive zero-call Sol-Only prefix views
 
-AllSol1 through AllSol9 are views of the completed AllSol10 trajectory and require no new model calls.
+Sol-Only prefixes with one through nine calls are views of the completed ten-call Sol-Only trajectory and require no new model calls. The example paths retain the historical `allsol` directory name.
 
 ```bash
 python scripts/derive_prefixes.py \
@@ -74,21 +74,21 @@ python scripts/derive_prefixes.py \
 
 The derivation must preserve the direct retrieval and take only the first `k` generation/search slots. It must not open qrels.
 
-## 6. Freeze the SQuAD selection split
+## 6. Freeze the SQuAD evaluation sample
 
-Exclude the independent pilot before creating the selection and confirmation halves. The `--questions` input must therefore contain exactly the 7,482 supported non-pilot rows, with only `qid` and `question` fields. The split is deterministic but pseudorandom: rank the remaining QIDs by a frozen salted SHA-256 digest, use the first 3,741 for selection, and reserve the remainder for confirmation.
+Exclude the independent pilot before sampling. The `--questions` input must therefore contain exactly the 7,482 supported non-pilot rows, with only `qid` and `question` fields. The split is deterministic but pseudorandom: rank the remaining QIDs by a frozen salted SHA-256 digest, use the first 992 for the released evaluation sample, and reserve the remainder.
 
 ```bash
 python scripts/freeze_split.py \
   --questions data/squad/nonpilot-questions.jsonl \
   --salt "${DELEGENT_SPLIT_SALT:?set the frozen public protocol salt}" \
-  --selection-count 3741 \
-  --selected runs/squad/split/selection.jsonl \
-  --remainder runs/squad/split/confirmation.jsonl \
+  --selection-count 992 \
+  --selected runs/squad/split/sample992.jsonl \
+  --remainder runs/squad/split/remainder.jsonl \
   --manifest runs/squad/split/manifest.json
 ```
 
-Use the exact public protocol salt rather than choosing one after inspecting any labels. The manifest records that salt plus the input and output hashes. Freeze those artifacts before generating or scoring selection trajectories. Do not inspect qrels while choosing the split.
+Use the exact public protocol salt rather than choosing one after inspecting any labels. The manifest records that salt plus the input and output hashes. Freeze those artifacts before generating or scoring sample trajectories. Do not inspect qrels while choosing the sample.
 
 ## 7. Score only after completion
 
@@ -107,13 +107,13 @@ python scripts/score_hotpotqa.py \
 python scripts/score_squad.py \
   --records runs/squad/allsol-prefixes/frontier5/records \
   --completion runs/squad/allsol-prefixes/frontier5/completion.json \
-  --qrels data/squad/selection-qrels.jsonl \
+  --qrels data/squad/sample992-qrels.jsonl \
   --output runs/squad/aggregate-score.json
 ```
 
 The routed-family and prefix-derivation commands write `completion.json` beside each arm's `records/` directory. A completion manifest binds the arm, question count, and record-set SHA-256. The scorers require this manifest and validate it before opening the qrels file. When `records/` follows the standard layout, `--completion` may be omitted and the adjacent manifest is inferred; explicit paths are shown above. Paired scoring independently requires and validates `--reference-completion` in the same way.
 
-Each qrels row contains `qid`, `positive_docids`, and, for HotpotQA, `doc_fact_ids`, which maps positive document IDs to required-fact IDs. A scorer requires the record and qrels QID sets to match exactly; prepare the SQuAD selection records and selection-only qrels before invoking it. Scorers emit aggregate metrics only. Public results must not contain QID lists, per-question scores, retrieved passage text, raw responses, or qrels.
+Each qrels row contains `qid`, `positive_docids`, and, for HotpotQA, `doc_fact_ids`, which maps positive document IDs to required-fact IDs. A scorer requires the record and qrels QID sets to match exactly; prepare the SQuAD sample records and sample-only qrels before invoking it. Scorers emit aggregate metrics only. Public results must not contain QID lists, per-question scores, retrieved passage text, raw responses, or qrels.
 
 ## 8. Summarize frontier cost after completion
 
@@ -142,7 +142,7 @@ HotpotQA reports:
 - RRF@20 required-fact coverage with `k=60`;
 - positive-document recall as a secondary diagnostic.
 
-SQuAD reports union-any positive-document recall on the frozen selection half. The reported result is a selection result, not untouched confirmation evidence.
+SQuAD reports union-any positive-document recall on the frozen 992-question sample. The reported result is not untouched confirmation evidence.
 
 The public scorers compute retrieval metrics and optional paired bootstrap comparisons. Dollar cost comes from the separate completion-gated `summarize_cost.py` command under the price rules in [the evaluation protocol](docs/evaluation-protocol.md). Post-training code and checkpoint distribution are not part of this initial routing/evaluation release.
 
