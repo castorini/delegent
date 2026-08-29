@@ -79,11 +79,96 @@
     "allocated_ram_gib": 150,
     "scheduler_peak_rss_gib": 19.8
   },
+  "historical_training_code": {
+    "stages_0_to_2": {
+      "path": "scripts/train_hf_retrieval_sft.py",
+      "sha256": "f579f117e2a1e7631148e776788a1bc0d2dccf1a6cb89e1e4ae0e91907e7fe29"
+    },
+    "final_continuation_stage": {
+      "path": "scripts/train_hf_retrieval_sft_resumable.py",
+      "sha256": "c289c8d6063d74d547d838addc1e9da3f0fb6c9c98f4673e62450566d8f6e989"
+    },
+    "stage_1_builder": {
+      "path": "scripts/build_sol_next_query_sft.py",
+      "sha256": "1c035000abfbbf3f7cae2ec4bb2450aca9e78567dd169c146d4e2504cca2f7c5"
+    }
+  },
+  "historical_stage_settings": {
+    "common_stages_0_to_2": {
+      "optimizer": "fused AdamW",
+      "learning_rate_schedule": "linear warmup then linear decay",
+      "warmup_ratio": 0.03,
+      "weight_decay": 0.0,
+      "gradient_clip_norm": 1.0,
+      "dtype": "bfloat16",
+      "gradient_checkpointing": true,
+      "loss_scope": "final assistant turn only",
+      "microbatch_size": 1,
+      "gradient_accumulation_steps": 8,
+      "effective_batch_size": 8,
+      "lora_targets": "Gemma text q/k/v/o and gate/up/down projections"
+    },
+    "stage_0": {
+      "source_trajectories": 88,
+      "retained_trajectories": 68,
+      "training_rows": 58,
+      "validation_rows": 10,
+      "validation_fraction": 0.15,
+      "maximum_length": 2048,
+      "optimizer_steps": 50,
+      "learning_rate": 0.00001,
+      "evaluation_interval_steps": 25,
+      "checkpoint_interval_steps": 50,
+      "seed": 13,
+      "train_data_sha256": "b3b69ae02020df45e22cfe1318d1e6a993c99549a034a917483ff384a0c18db1",
+      "validation_data_sha256": "c5e6c33580e320444a97e945f1bb72dc23f66706753b165299dd3cb7e30c8267",
+      "training_arguments_sha256": "09613f17901731258baafef7572e45e0347c98f3ac88fe6209525ddeb7887933",
+      "output_weights_sha256": "556bcd5fcb93753c140d52ed94f051255e79df1fc227c343a1dc6ea7aad11569"
+    },
+    "stage_1": {
+      "source_trajectories": 88,
+      "retained_trajectories": 53,
+      "training_question_groups": 45,
+      "validation_question_groups": 8,
+      "training_rows": 87,
+      "validation_rows": 16,
+      "validation_fraction": 0.15,
+      "maximum_length": 2048,
+      "optimizer_steps": 80,
+      "learning_rate": 0.000005,
+      "evaluation_interval_steps": 20,
+      "checkpoint_interval_steps": 20,
+      "seed": 13,
+      "train_data_sha256": "d9648a1d0a99f6c9ae626f9f0cae2518c282e26303673b75a2ed73dc1e6cfee9",
+      "validation_data_sha256": "0486f2d333b0c0fa03af39f226b89ba4729bc303dc44f2b7502a917aaec4ab68",
+      "training_arguments_sha256": "c2338a2936c4bfa63dd7bf3e2f80acb69a37268b9612ca68c5a8a57eb1c4dd00",
+      "output_weights_sha256": "44fecc6bfe1b6c4e614287475158e4954b55cc7fff85f8d5160c10edd4a4fce2"
+    },
+    "stage_2": {
+      "source_trajectories": 128,
+      "training_question_groups": 109,
+      "validation_question_groups": 19,
+      "training_rows": 436,
+      "validation_rows": 76,
+      "validation_fraction": 0.15,
+      "maximum_length": 6144,
+      "observed_maximum_length": 5325,
+      "optimizer_steps": 120,
+      "learning_rate": 0.000003,
+      "evaluation_interval_steps": 20,
+      "checkpoint_interval_steps": 20,
+      "seed": 56,
+      "train_data_sha256": "2ac2a2d929692066a0319017d9334a04f433dd9bb55ddd34db288e7b214dc95d",
+      "validation_data_sha256": "d81412a9838b185f24ce25f295586e88c7761e84b35d21503a9d26df474a145c",
+      "data_manifest_sha256": "639f489e7b50384433437b608a16c1b3c30a1a2de016efe2f88eae3a8a345261",
+      "training_arguments_sha256": "85e7cd1f47989a16b7e8a246cb1c4a26d5d21c538b166a921d35b568c27c56ea",
+      "output_weights_sha256": "530d5d8a8bc9ed38af7d24f6ee60bfa16dddeead37f7c3c205b74a158f2be01f"
+    }
+  },
   "claim_boundaries": [
     "The deployed adapter continues three earlier supervised LoRA stages; it is not a one-stage base-to-final run.",
     "Early HotpotQA-source rows were selected using training-only qrel metrics, but qrels and answers were not included in model messages.",
-    "The released trainer is a reviewed reproduction implementation, not the byte-identical historical trainer source.",
-    "The released implementation does not guarantee the historical optimizer, data-ordering, warmup-rounding, or resume behavior.",
+    "The exact historical stage trainers are released alongside a smaller reviewed convenience implementation.",
     "Raw training messages and the adapter weights are not included in this repository."
   ]
 }

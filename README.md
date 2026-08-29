@@ -39,7 +39,7 @@ We use **Sol-Only** for a schedule in which every generated search call is assig
 
 Generation is qrel-blind: neither actor receives qrels, reference answers, future Sol searches, or evaluation metrics. Before opening qrels, the scorer validates a completion manifest against the arm, question count, and cryptographic identity of the finished record set. See [the evaluation protocol](docs/evaluation-protocol.md) for the full contract.
 
-The evaluated local actor freezes `google/gemma-4-E4B-it` and adds a rank-16 LoRA adapter trained with next-token supervision. Its model messages contain Sol search steps but no qrels or answers; early HotpotQA-source rows were selected with training-only qrel metrics. The evaluation holdout is disjoint from training, and the official checkpoint without the adapter uses the same prompt and serving contract. The release includes the training implementation, effective final-stage configuration, and aggregate lineage; it does not include the cumulative input adapter, raw trajectories, or final checkpoint.
+The evaluated local actor freezes `google/gemma-4-E4B-it` and adds a rank-16 LoRA adapter trained with next-token supervision. Its model messages contain Sol search steps but no qrels or answers; early HotpotQA-source rows were selected with training-only qrel metrics. The evaluation holdout is disjoint from training, and the official checkpoint without the adapter uses the same prompt and serving contract. The release includes the exact historical stage trainers, a simpler reviewed training implementation, the effective final-stage configuration, and aggregate lineage; it does not include the cumulative input adapter, raw trajectories, or final checkpoint.
 
 ## Quick Start
 
@@ -129,7 +129,7 @@ The 50-document starting point is already near saturation: five additional Sol c
 
 ## Reproducibility and Data Release
 
-The repository intentionally does **not** contain benchmark qrels, reference answers, benchmark question IDs, raw model responses, OAuth state, service credentials, checkpoints, or private run receipts. Public scripts separate qrel-blind generation from post-completion scoring, validate exact prefix reuse before admitting a routed record, summarize paid frontier cost without emitting QIDs, and expose the post-training objective and effective final-stage hyperparameters.
+The repository intentionally does **not** contain benchmark qrels, reference answers, benchmark question IDs, raw model responses, OAuth state, service credentials, checkpoints, or private run receipts. Public scripts separate qrel-blind generation from post-completion scoring, validate exact prefix reuse before admitting a routed record, summarize paid frontier cost without emitting QIDs, and expose the exact historical training loops, post-training objective, and effective final-stage hyperparameters.
 
 Start with [REPRODUCING.md](REPRODUCING.md) and the [post-training protocol](docs/post-training.md). The cumulative input adapter, teacher trajectories, and final adapter are not distributed in this release.
 

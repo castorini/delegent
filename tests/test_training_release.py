@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -38,3 +39,11 @@ def test_training_dry_run_needs_no_ml_dependencies(tmp_path: Path) -> None:
     assert payload["status"] == "validated"
     assert payload["train_rows"] == payload["validation_rows"] == 1
     assert payload["model_or_adapter_loaded"] is False
+
+
+def test_historical_training_sources_match_lineage() -> None:
+    lineage = json.loads((ROOT / "results/training_lineage.json").read_text())
+    for record in lineage["historical_training_code"].values():
+        path = ROOT / record["path"]
+        assert path.is_file()
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == record["sha256"]

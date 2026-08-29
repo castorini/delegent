@@ -151,11 +151,12 @@ For GPU training, install the exact locked environment with
 `uv sync --extra train --frozen` before removing `--dry-run`.
 
 The effective final-stage hyperparameters and cumulative lineage are documented
-in [`docs/post-training.md`](docs/post-training.md). The released trainer is a
-reviewed reproduction implementation, not the byte-identical historical
-trainer. The cumulative input adapter, raw teacher trajectories, and final
-adapter are not included, so the published checkpoint cannot be reconstructed
-from this repository alone.
+in [`docs/post-training.md`](docs/post-training.md). The exact historical
+trainers are released as `scripts/train_hf_retrieval_sft.py` and
+`scripts/train_hf_retrieval_sft_resumable.py`; the dependency-free dry run above
+uses a smaller reviewed convenience implementation. The cumulative input
+adapter, raw teacher trajectories, and final adapter are not included, so the
+published checkpoint cannot be reconstructed from this repository alone.
 
 ## 10. Metrics
 
