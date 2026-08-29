@@ -4,9 +4,9 @@ This guide describes the public, staged reproduction contract. Generation and sc
 
 ## 1. Install and test
 
+From the root of a clone or downloaded ZIP of this repository:
+
 ```bash
-git clone https://github.com/castorini/Delegent.git
-cd Delegent
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -134,7 +134,30 @@ Rates are USD per million tokens. Total input includes cached input; cached toke
 
 As with scoring, `--completion` may be omitted under the standard `arm/records` plus `arm/completion.json` layout. To summarize a derived SQuAD prefix, use `--records runs/squad/allsol-prefixes/frontier5/records` with its adjacent completion manifest.
 
-## 9. Metrics
+## 9. Validate the post-training release
+
+The release includes a dependency-free dry-run over a synthetic training row:
+
+```bash
+python scripts/train_retrieval_sft.py \
+  --config configs/gemma4-sft.json \
+  --train-files examples/training_example.jsonl \
+  --validation-files examples/training_example.jsonl \
+  --output-dir /tmp/delegent-sft-smoke \
+  --dry-run
+```
+
+For GPU training, install the exact locked environment with
+`uv sync --extra train --frozen` before removing `--dry-run`.
+
+The effective final-stage hyperparameters and cumulative lineage are documented
+in [`docs/post-training.md`](docs/post-training.md). The released trainer is a
+reviewed reproduction implementation, not the byte-identical historical
+trainer. The cumulative input adapter, raw teacher trajectories, and final
+adapter are not included, so the published checkpoint cannot be reconstructed
+from this repository alone.
+
+## 10. Metrics
 
 HotpotQA reports:
 
@@ -144,9 +167,9 @@ HotpotQA reports:
 
 SQuAD reports union-any positive-document recall on the frozen 992-question sample. The reported result is not untouched confirmation evidence.
 
-The public scorers compute retrieval metrics and optional paired bootstrap comparisons. Dollar cost comes from the separate completion-gated `summarize_cost.py` command under the price rules in [the evaluation protocol](docs/evaluation-protocol.md). Post-training code and checkpoint distribution are not part of this initial routing/evaluation release.
+The public scorers compute retrieval metrics and optional paired bootstrap comparisons. Dollar cost comes from the separate completion-gated `summarize_cost.py` command under the price rules in [the evaluation protocol](docs/evaluation-protocol.md). The training implementation is released, while cumulative training inputs and checkpoint distribution are not.
 
-## 10. Contamination and privacy checklist
+## 11. Contamination and privacy checklist
 
 Before publishing a run, verify all of the following:
 
@@ -159,7 +182,7 @@ Before publishing a run, verify all of the following:
 - endpoints, usernames, absolute machine paths, tokens, OAuth files, and private checkpoint paths are absent from committed files;
 - only aggregate result tables are committed.
 
-## 11. Released aggregate tables
+## 12. Released aggregate tables
 
 The values displayed in the README are available as:
 

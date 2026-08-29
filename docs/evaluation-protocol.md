@@ -49,7 +49,7 @@ The generation command does not take a qrels path. Each finished arm receives a 
 
 ## Dataset separation
 
-The post-trained Gemma uses qrel-blind Sol search trajectories from training questions isolated from the HotpotQA evaluation set and randomly sampled BrowseComp-Plus questions. No SQuAD evaluation question is used for training. Dataset overlap checks use normalized question text in addition to IDs.
+The post-trained Gemma uses Sol search trajectories from training questions isolated from the HotpotQA evaluation set and from the training partition of a frozen, correlation-group-aware BrowseComp-Plus split. The model messages contain no qrels or answers; early HotpotQA-source rows were selected with training-partition qrel metrics. No SQuAD evaluation question is used for training. Dataset overlap checks use normalized question text in addition to IDs.
 
 ## HotpotQA metrics
 

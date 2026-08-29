@@ -6,9 +6,9 @@ Fixed-Schedule Model Routing for Cost-Effective Search
 
 <p align="center">
   <strong>Paper coming soon</strong> |
-  <a href="#quick-start"><strong>Quick Start</strong></a> |
-  <a href="#how-delegent-works"><strong>Method</strong></a> |
-  <a href="#results"><strong>Results</strong></a> |
+  <a href="README.md#quick-start"><strong>Quick Start</strong></a> |
+  <a href="README.md#how-delegent-works"><strong>Method</strong></a> |
+  <a href="README.md#results"><strong>Results</strong></a> |
   <a href="REPRODUCING.md"><strong>Reproduce</strong></a>
 </p>
 
@@ -39,14 +39,13 @@ We use **Sol-Only** for a schedule in which every generated search call is assig
 
 Generation is qrel-blind: neither actor receives qrels, reference answers, future Sol searches, or evaluation metrics. Before opening qrels, the scorer validates a completion manifest against the arm, question count, and cryptographic identity of the finished record set. See [the evaluation protocol](docs/evaluation-protocol.md) for the full contract.
 
-The evaluated local actor freezes `google/gemma-4-E4B-it` and adds a rank-16 LoRA adapter trained with next-token supervision. Training examples are qrel-blind Sol search steps from HotpotQA questions disjoint from the evaluation holdout and randomly sampled BrowseComp-Plus questions. The official checkpoint without the adapter is evaluated under the same prompt and serving contract. This initial code release covers routing, prefix reuse, split freezing, and aggregate scoring; post-training code and checkpoint distribution are not yet included.
+The evaluated local actor freezes `google/gemma-4-E4B-it` and adds a rank-16 LoRA adapter trained with next-token supervision. Its model messages contain Sol search steps but no qrels or answers; early HotpotQA-source rows were selected with training-only qrel metrics. The evaluation holdout is disjoint from training, and the official checkpoint without the adapter uses the same prompt and serving contract. The release includes the training implementation, effective final-stage configuration, and aggregate lineage; it does not include the cumulative input adapter, raw trajectories, or final checkpoint.
 
 ## Quick Start
 
-```bash
-git clone https://github.com/castorini/Delegent.git
-cd Delegent
+From the root of a clone or downloaded ZIP of this repository:
 
+```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -70,7 +69,7 @@ Both benchmarks are projected onto the fixed `fineweb-edu-100b-karpathy` corpus.
   <img src="assets/hotpotqa_routing_curves.png" width="950" alt="HotpotQA Sol-Gemma and Sol-Only routing curves">
 </p>
 
-Union fact is macro coverage over the deduplicated retrieval union. RRF@20 is required-fact coverage after reciprocal-rank fusion with \(k=60\). Sol cost is the aggregate API-equivalent cost over 366 questions; savings are relative to ten-call Sol-Only with 20-document direct retrieval. Local Gemma inference is estimated separately at roughly 1/200 of Sol inference and rounds to $0.00 at the table's precision.
+Union fact is macro coverage over the deduplicated retrieval union. RRF@20 is required-fact coverage after reciprocal-rank fusion with \(k=60\). Sol cost is the aggregate API-equivalent cost over 366 questions; savings are relative to ten-call Sol-Only with 20-document direct retrieval. Gemma's quoted uncached-input and output rates are 1/200 of Sol's corresponding rates; the paper's primary curve treats locally served Gemma inference as $0.00.
 
 | Schedule | Union fact SFT | Union fact official | RRF@20 SFT | RRF@20 official | Sol cost | Savings |
 |---|---:|---:|---:|---:|---:|---:|
@@ -120,6 +119,9 @@ The 50-document starting point is already near saturation: five additional Sol c
 | [`src/delegent/`](src/delegent/) | Reusable record, schedule, prefix-reuse, and scoring contracts |
 | [`scripts/`](scripts/) | Dry-run validation, routed generation, prefix derivation, split freezing, aggregate scoring, and frontier-cost accounting CLIs |
 | [`configs/`](configs/) | Secret-free public experiment configurations |
+| [`docs/post-training.md`](docs/post-training.md) | LoRA training format, command, lineage, and release boundary |
+| [`docs/compute.md`](docs/compute.md) | Measured training and local-inference compute, plus unavailable quantities |
+| [`docs/ASSET_LICENSES.md`](docs/ASSET_LICENSES.md) | Existing-asset versions, licenses, terms, and unresolved compliance items |
 | [`tests/`](tests/) | Unit tests for contracts, routing invariants, and metrics |
 | [`results/`](results/) | Aggregate-only released tables; no QIDs, traces, or qrels |
 | [`docs/`](docs/) | Evaluation and contamination-control protocol |
@@ -127,9 +129,9 @@ The 50-document starting point is already near saturation: five additional Sol c
 
 ## Reproducibility and Data Release
 
-The repository intentionally does **not** contain benchmark qrels, reference answers, benchmark question IDs, raw model responses, OAuth state, service credentials, checkpoints, or private run receipts. Public scripts separate qrel-blind generation from post-completion scoring, validate exact prefix reuse before admitting a routed record, and summarize paid frontier cost without emitting QIDs.
+The repository intentionally does **not** contain benchmark qrels, reference answers, benchmark question IDs, raw model responses, OAuth state, service credentials, checkpoints, or private run receipts. Public scripts separate qrel-blind generation from post-completion scoring, validate exact prefix reuse before admitting a routed record, summarize paid frontier cost without emitting QIDs, and expose the post-training objective and effective final-stage hyperparameters.
 
-Start with [REPRODUCING.md](REPRODUCING.md). Benchmark and checkpoint distribution instructions will be added as their release locations are finalized.
+Start with [REPRODUCING.md](REPRODUCING.md) and the [post-training protocol](docs/post-training.md). The cumulative input adapter, teacher trajectories, and final adapter are not distributed in this release.
 
 ## Citation
 

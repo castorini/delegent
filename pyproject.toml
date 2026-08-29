@@ -10,9 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [
-  {name = "Castorini"}
-]
+authors = [{name = "Delegent contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
@@ -20,8 +18,20 @@ test = [
   "pytest>=8.0"
 ]
 
-[project.urls]
-Repository = "https://github.com/castorini/Delegent"
+train = [
+  "accelerate==1.14.0",
+  "huggingface-hub==1.24.0",
+  "jinja2==3.1.6",
+  "numpy==1.26.4",
+  "peft==0.19.1",
+  "protobuf==7.35.1",
+  "psutil==7.2.2",
+  "safetensors==0.8.0",
+  "sentencepiece==0.2.2",
+  "torch==2.13.0",
+  "tokenizers==0.22.2",
+  "transformers==5.14.1"
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
