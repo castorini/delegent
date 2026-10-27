@@ -1,1 +1,0 @@
-"""Delegent test package."""
