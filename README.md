@@ -7,7 +7,6 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
-  <img alt="Works with Claude Code" src="https://img.shields.io/badge/works%20with-Claude%20Code-orange.svg">
   <img alt="SLM on vLLM" src="https://img.shields.io/badge/SLM-vLLM-green.svg">
 </p>
 
@@ -53,16 +52,15 @@ Delegent is one harness with one rule: **calls from the agent in charge go to th
 runs on the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context,
 and only their final reports reach the frontier agent, never their tool output.
 
-- **One instruction.** A short [instruction](src/delegent/instructions/delegent.md) has one part per subtask tool, and
-  the frontier agent gets the parts for the tools it has: Claude Code's Agent tool when coding, `Delegate` when
-  searching. Each part tells it what to delegate and to keep its own tool use to a few targeted checks.
+- **One instruction.** A short [instruction](src/delegent/instructions/delegent.md) covers both kinds of delegation,
+  Claude Code's subagents for coding and the `Delegate` tool for search. It tells the frontier agent what to delegate
+  and to keep its own tool use to a few targeted checks.
 - **Coding.** Claude Code runs unmodified. Its main agent talks to the frontier model, while its subagents and its small
-  auxiliary model talk to the SLM. The Agent part, installed as a user-level `CLAUDE.md`, asks the frontier agent to
+  auxiliary model talk to the SLM. The instruction, installed as a user-level `CLAUDE.md`, asks the frontier agent to
   delegate investigation and verification and to make every code change itself.
-- **Agentic search.** The frontier agent gets a `Delegate` tool next to `search` and `get_document`, plus the
-  Delegate part of the instruction. An SLM subagent searches the same corpus in the research loop of
-  [AREX-Turbo](https://huggingface.co/BAAI/AREX-Turbo) and reports an answer with evidence, and Delegent looks up every
-  evidence line in the cited document before the report comes back.
+- **Agentic search.** The frontier agent gets a `Delegate` tool next to `search` and `get_document`. A delegated SLM
+  subagent searches the same corpus and reports an answer with evidence, and Delegent looks up every evidence line in
+  the cited document before the report comes back.
 - **Caching on both sides.** Frontier calls carry a stable prompt-cache key per conversation, and each SLM subagent is
   pinned to one vLLM replica, so its growing prefix stays cached there.
 
@@ -73,6 +71,10 @@ and only their final reports reach the frontier agent, never their tool output.
 ```bash
 pip install git+https://github.com/castorini/Delegent.git
 ```
+
+For coding, also install [Claude Code](https://code.claude.com/docs). Delegent does not include or modify it; it points
+an unmodified Claude Code at the relay through Claude Code's documented `ANTHROPIC_BASE_URL` setting, and your use of
+Claude Code remains subject to Anthropic's terms.
 
 **2. Serve an SLM** with vLLM on your GPU.
 
@@ -161,7 +163,7 @@ Prices are dollars per million uncached input, cached input and output tokens; r
 | `src/delegent/delegate.py` | the `Delegate` tool, the SLM search subagent and the evidence check |
 | `src/delegent/agent.py` | the search agent loop |
 | `src/delegent/corpus.py`, `bm25.py` | ClimbMix client and local BM25 index |
-| `src/delegent/instructions/delegent.md` | the instruction, one part per subtask tool |
+| `src/delegent/instructions/delegent.md` | the instruction for coding and search |
 | `samples/` | task and question ids of the paper's evaluation |
 | `tests/` | offline tests with fake model servers (`pytest`) |
 
@@ -169,5 +171,5 @@ Prices are dollars per million uncached input, cached input and output tokens; r
 
 ## License
 
-Apache 2.0. The SLM search subagent uses the prompts and tool schemas of
-[AREX-Turbo](https://huggingface.co/BAAI/AREX-Turbo), also Apache 2.0; see [NOTICE](NOTICE).
+Apache 2.0. The SLM search subagent reuses the prompts and tool definitions of
+[AREX-Turbo](https://huggingface.co/BAAI/AREX-Turbo) (Apache 2.0); see [NOTICE](NOTICE).

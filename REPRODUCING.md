@@ -23,7 +23,7 @@ Qwen3.8-27B-FP8 answers without thinking, with temperature 0.7 and top-p 0.8.
 - Context: up to 1M tokens for the frontier model (`CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000`, the default of
   `delegent claude`) and 131,072 tokens for the SLM; at most 32,768 output tokens per call.
 - Tool time: 60 minutes per task (90 on DeepSWE), not counting time spent waiting for a model.
-- The Agent part of the [instruction](src/delegent/instructions/delegent.md) is the user-level `CLAUDE.md`; the
+- The coding text of the [instruction](src/delegent/instructions/delegent.md) is the user-level `CLAUDE.md`; the
   frontier agent alone runs without it.
 - Prompts: SWE-bench Verified gets "Please fix the following issue in the repository at {path}. Inspect the code,
   implement the fix, and run relevant tests. The repository and dependencies are available locally." followed by the
@@ -38,7 +38,7 @@ Qwen3.8-27B-FP8 answers without thinking, with temperature 0.7 and top-p 0.8.
 
 - The frontier agent has `search` (top 10 BM25 hits with the best-matching passage) and `get_document` (8,000
   characters per page), at most 100 turns, then one turn without tools for the final answer.
-- With delegation it also has `Delegate` and the Delegate part of the [instruction](src/delegent/instructions/delegent.md). Each call
+- With delegation it also has `Delegate` and the search text of the [instruction](src/delegent/instructions/delegent.md). Each call
   runs one SLM subagent of at most 80 steps, with no retries.
 - DeepSearchQA questions have several answers and run in two modes, `--multi-answer one` and `--multi-answer all`.
 - Answers are graded against the gold answer by GPT-6.1-Sol at low effort with the official BrowseComp-Plus grading
