@@ -64,7 +64,7 @@ def cmd_claude(args):
     config.mkdir(parents=True, exist_ok=True)
     if not args.no_instruction:   # the coding instruction as a user-level CLAUDE.md
         from .agent import instruction
-        (config / 'CLAUDE.md').write_text(instruction('coding'))
+        (config / 'CLAUDE.md').write_text(instruction({'Agent'}))
     env = {**os.environ, **claude_env(relay, args.slm_model, args.frontier_context), 'CLAUDE_CONFIG_DIR': str(config)}
     passthrough = args.claude_args[1:] if args.claude_args[:1] == ['--'] else args.claude_args
     proc = subprocess.Popen([claude, '--model', args.frontier, *passthrough], env=env)

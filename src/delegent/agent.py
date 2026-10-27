@@ -43,8 +43,18 @@ MULTI_ANSWER = {
 }
 
 
-def instruction(name):
-    return resources.files('delegent.instructions').joinpath(f'{name}.md').read_text()
+def instruction(tools):
+    """The Delegent instruction for an agent with these tools: one part per subtask tool (Claude Code's Agent tool,
+    the Delegate tool), each given only to an agent that has that tool."""
+    text = resources.files('delegent.instructions').joinpath('delegent.md').read_text()
+    parts, name = {}, None
+    for line in text.splitlines(keepends=True):
+        if line.startswith('<!-- part: '):
+            name = line[len('<!-- part: '):].split(' -->')[0]
+            parts[name] = ''
+        elif name:
+            parts[name] += line
+    return ''.join(parts[n] for n in parts if n in set(tools))
 
 
 def run_tool(corpus, name, inp):
@@ -77,7 +87,7 @@ def run_tool(corpus, name, inp):
 
 def answer(question, frontier, corpus, delegate=None, max_steps=100, ledger=None, frontier_model=None):
     """Run the frontier agent on one question -> result row (answer, frontier usage, actions, delegations)."""
-    system = SYSTEM + ('\n\n' + instruction('search') if delegate else '')
+    system = SYSTEM + ('\n\n' + instruction({'Delegate'}).rstrip('\n') if delegate else '')
     payload = {'model': frontier_model or getattr(frontier, 'model', 'frontier'), 'system': system,
                'tools': TOOLS + ([DELEGATE_TOOL] if delegate else []), 'max_tokens': 32768,
                'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': 'QUESTION:\n' + question}]}]}

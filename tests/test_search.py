@@ -123,3 +123,11 @@ def test_agent_alone_has_no_delegate(tmp_path):
     result = agent.answer('Q?', Answering(), corpus, None)
     assert result['answer'] == 'Exact Answer: none' and result['delegations'] == []
     assert [t['name'] for t in Answering.payloads[0]['tools']] == ['search', 'get_document']
+
+
+def test_one_instruction_parts_by_tool():
+    coding, search = agent.instruction({'Agent'}), agent.instruction({'Delegate'})
+    assert coding.startswith('# Working with subagents') and 'Delegate tool' not in coding
+    assert search.startswith('You have a research assistant') and 'Agent tool' not in search
+    assert agent.instruction({'Agent', 'Delegate'}) == coding + search
+    assert agent.instruction(set()) == '' and '<!--' not in coding + search
