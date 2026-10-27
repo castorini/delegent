@@ -33,23 +33,21 @@ With GPT-6.1-Sol as the frontier agent, Delegent cuts the frontier model's bill 
 same harness. On DeepSWE it falls from $2.11 to $0.70 per task with Qwen3.8-27B-FP8 and to $0.71 with MiniCPM5-2B.
 Even with Qwen3.8-27B-FP8 paid for at API prices, a DeepSWE task costs 38% of the frontier agent alone.</sub>
 
-The savings grow with the legwork: the longer the frontier agent would work on a task by itself, the more of that
-work moves to the SLM.
+The savings grow with the legwork. The longer the frontier agent would work on a task by itself, the more of that work
+moves to the SLM, down to about a quarter of the cost on tasks that take it more than 200 calls alone.
+
+<p align="center">
+  <img src="assets/savings-vs-legwork.png" alt="Median relative frontier cost per coding task falls from 0.62 for tasks with fewer than 25 calls alone to 0.26 for tasks with more than 200" width="620">
+  <br>
+  <sub>Median frontier cost with Delegent relative to the frontier agent alone, per coding task, by how many calls the
+  frontier agent makes on the task alone (350 task pairs, three coding sets, both SLMs).</sub>
+</p>
 
 ## How it works
 
-```mermaid
-flowchart TB
-    T(["Task"]) --> F["Frontier agent<br/>plans, checks facts, writes the answer"]
-    F -- "subtasks" --> R{{"Delegent<br/>routes every call by role"}}
-    R -- "short reports" --> F
-    R --> S1["SLM subagent"]
-    R --> S2["SLM subagent"]
-    R --> S3["SLM subagent"]
-    S1 <--> E[("Repository or corpus")]
-    S2 <--> E
-    S3 <--> E
-```
+<p align="center">
+  <img src="assets/overview.png" alt="The frontier agent delegates subtasks through the Delegent harness, which runs them in parallel on SLM subagents on a local GPU and returns their reports with an automatic quote check" width="560">
+</p>
 
 Delegent is one harness with one rule: **calls from the agent in charge go to the frontier model, and every subtask
 runs on the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context,
@@ -60,8 +58,9 @@ and only their final reports reach the frontier agent, never their tool output.
   user-level `CLAUDE.md`, asks the frontier agent to delegate investigation and verification and to make every code
   change itself.
 - **Agentic search.** The frontier agent gets a `Delegate` tool next to `search` and `get_document`, plus a short
-  [instruction](src/delegent/instructions/search.md). An SLM subagent searches the same corpus and reports an answer
-  with evidence, and Delegent looks up every evidence line in the cited document before the report comes back.
+  [instruction](src/delegent/instructions/search.md). An SLM subagent searches the same corpus in the research loop of
+  [AREX-Turbo](https://huggingface.co/BAAI/AREX-Turbo) and reports an answer with evidence, and Delegent looks up every
+  evidence line in the cited document before the report comes back.
 - **Caching on both sides.** Frontier calls carry a stable prompt-cache key per conversation, and each SLM subagent is
   pinned to one vLLM replica, so its growing prefix stays cached there.
 
