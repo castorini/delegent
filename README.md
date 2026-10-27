@@ -105,6 +105,19 @@ When Claude Code exits, Delegent prints the frontier cost of the session. For a 
 
 ## Usage
 
+### One command for any task
+
+```bash
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Fix the failing test in tests/test_parser.py" --repo path/to/repo
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Which 1990s film ...?" --corpus climbmix
+```
+
+Before the task starts, the frontier model reads it and says whether it is a coding task or a search question, and
+Delegent runs it as `delegent claude` or `delegent search` would. `--pick-by environment` decides from what the task
+comes with instead: a repository means coding, a corpus means search.
+
 ### Coding
 
 Everything after `--` goes to Claude Code. A headless run on one issue:

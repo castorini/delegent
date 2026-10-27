@@ -131,3 +131,24 @@ def test_one_instruction_parts_by_tool():
     assert search.startswith('You have a research assistant') and 'Agent tool' not in search
     assert agent.instruction({'Agent', 'Delegate'}) == coding + search
     assert agent.instruction(set()) == '' and '<!--' not in coding + search
+
+
+def test_pick_by_model_and_environment():
+    from delegent import pick
+
+    class Says:
+        model = 'gpt-x'
+
+        def __init__(self, word):
+            self.word, self.prompt = word, None
+
+        def stream(self, payload, usage_sink, **kw):
+            self.prompt = payload['messages'][0]['content'][0]['text']
+            usage_sink({'input_tokens': 50, 'output_tokens': 3})
+            yield message_stream([{'type': 'text', 'text': self.word}], 'gpt-x')
+
+    f = Says('Search.')
+    assert pick.by_model('Who won the 1998 award?', f) == 'search' and 'Who won the 1998 award?' in f.prompt
+    assert pick.by_model('Fix the parser bug.', Says('coding')) == 'coding'
+    assert pick.by_model('x', Says('not sure')) is None
+    assert pick.by_environment(repo='/r') == 'coding' and pick.by_environment(corpus='climbmix') == 'search'

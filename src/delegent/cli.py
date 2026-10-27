@@ -141,6 +141,42 @@ def agent_notes(mode):
     return MULTI_ANSWER[mode] if mode else ''
 
 
+def cmd_run(args):
+    """One entry point: pick the loop for the task, then run it exactly as `claude` or `search` would."""
+    from . import pick
+    task = Path(args.task_file).read_text() if args.task_file else args.task
+    if not task:
+        sys.exit('give --task or --task-file')
+    if args.pick_by == 'environment':
+        kind = pick.by_environment(args.repo, args.corpus)
+    else:
+        frontier = frontier_backends.make(args.frontier, 'low')
+        kind = pick.by_model(task, frontier, Ledger(args.ledger), model=args.frontier)
+    print(f'delegent: {kind} task', file=sys.stderr)
+    if kind == 'coding':
+        if not args.repo:
+            sys.exit('the task looks like coding, but no --repo was given')
+        os.chdir(args.repo)
+        rest = args.claude_args[1:] if args.claude_args[:1] == ['--'] else args.claude_args
+        args.claude_args = ['-p', task, *rest]
+        return cmd_claude(args)
+    if kind == 'search':
+        if not args.corpus:
+            sys.exit('the task looks like search, but no --corpus was given')
+        from .agent import answer
+        from .corpus import open_corpus
+        from .delegate import Delegate
+        ledger = Ledger(args.ledger)
+        corpus = open_corpus(args.corpus, args.corpus_root, args.index)
+        delegate = Delegate(make_slm(args), corpus, max_steps=args.slm_max_steps)
+        result = answer(task, frontier_backends.make(args.frontier, args.effort), corpus, delegate, ledger=ledger,
+                        frontier_model=args.frontier)
+        print(result['answer'])
+        print('delegent: ' + summary(ledger.rows, args.prices), file=sys.stderr)
+        return
+    sys.exit('could not tell whether the task is coding or search; pass --pick-by environment')
+
+
 def cmd_index(args):
     from .bm25 import build
     build(args.corpus, args.out, args.workers)
@@ -190,6 +226,26 @@ def main(argv=None):
     p.add_argument('--multi-answer', choices=['one', 'all'], help='questions with several answers: find one or all')
     p.add_argument('--prices', action='append', help=price_help)
     p.set_defaults(func=cmd_search)
+
+    p = sub.add_parser('run', help='one entry point: pick coding or search for the task, then run it')
+    add_models(p)
+    p.add_argument('--task', help='the task or question')
+    p.add_argument('--task-file')
+    p.add_argument('--repo', help='repository to work in (coding)')
+    p.add_argument('--corpus', choices=['climbmix', 'local'], help='corpus to search (search)')
+    p.add_argument('--corpus-root')
+    p.add_argument('--index')
+    p.add_argument('--pick-by', choices=['model', 'environment'], default='model',
+                   help='who picks the loop: the frontier model (default) or what the task comes with')
+    p.add_argument('--frontier-context', type=int, default=1_000_000)
+    p.add_argument('--no-instruction', action='store_true')
+    p.add_argument('--config-dir')
+    p.add_argument('--claude-bin')
+    p.add_argument('--slm-max-steps', type=int, default=80)
+    p.add_argument('--ledger', default='delegent-usage.jsonl')
+    p.add_argument('--prices', action='append', help=price_help)
+    p.add_argument('claude_args', nargs=argparse.REMAINDER, help='extra arguments for claude (after --)')
+    p.set_defaults(func=cmd_run)
 
     p = sub.add_parser('index', help='build a BM25 index over a local corpus')
     p.add_argument('--corpus', required=True)
