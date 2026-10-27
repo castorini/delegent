@@ -152,6 +152,8 @@ def cmd_run(args):
     else:
         frontier = frontier_backends.make(args.frontier, 'low')
         kind = pick.by_model(task, frontier, Ledger(args.ledger), model=args.frontier)
+        if kind is None and (args.repo or args.corpus):   # the model did not name a kind: decide by the environment
+            kind = pick.by_environment(args.repo, args.corpus)
     print(f'delegent: {kind} task', file=sys.stderr)
     if kind == 'coding':
         if not args.repo:

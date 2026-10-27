@@ -46,6 +46,13 @@ Qwen3.8-27B-FP8 answers without thinking, with temperature 0.7 and top-p 0.8.
 - Questions: [samples/search](samples/search). The 200 BrowseComp-Plus questions are searched over the BrowseComp-Plus
   corpus; the other sets come from CMASS and are searched over ClimbMix.
 
+## Choosing the loop
+
+`delegent run` asks the frontier model whether a task is coding or search before it starts (the prompt is in
+`src/delegent/pick.py`). The paper's experiments set the loop by task set; asked afterwards, GPT-6.1-Sol at low effort
+chose the loop the experiments used for all 869 tasks and questions (175 coding tasks, 694 search questions), at about
+$0.0005 per task, which the paper's cost figures do not include.
+
 ## Differences from the research code
 
 - **Frontier access.** The research code reached the Responses API through a job queue; this release calls the API

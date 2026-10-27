@@ -7,9 +7,9 @@ import time
 
 from .sse import collect_message
 
-PICK_PROMPT = ('Before you start, decide which kind of task this is. Answer with exactly one word: coding if the task '
-               'asks you to change code in a software repository, or search if it asks you to find the answer to a '
-               'question.\n\nTask:\n{task}')
+PICK_PROMPT = ('Here is a task.\n\n<task>\n{task}\n</task>\n\nDo not do the task. Decide which kind of task it is and '
+               'answer with exactly one word: coding if it asks you to change code in a software repository, or search '
+               'if it asks you to find the answer to a question.')
 KINDS = ('coding', 'search')
 
 
