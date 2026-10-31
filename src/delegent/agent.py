@@ -86,7 +86,7 @@ def run_tool(corpus, name, inp):
 
 
 def answer(question, frontier, corpus, delegate=None, max_steps=100, ledger=None, frontier_model=None):
-    """Run the frontier agent on one question -> result row (answer, frontier usage, actions, delegations)."""
+    """Run the frontier model on one question -> result row (answer, frontier usage, actions, delegations)."""
     system = SYSTEM + ('\n\n' + instruction({'Delegate'}).rstrip('\n') if delegate else '')
     payload = {'model': frontier_model or getattr(frontier, 'model', 'frontier'), 'system': system,
                'tools': TOOLS + ([DELEGATE_TOOL] if delegate else []), 'max_tokens': 32768,

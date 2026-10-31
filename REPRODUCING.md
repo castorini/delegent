@@ -8,8 +8,8 @@ harness itself and drops the cluster plumbing.
 
 | Role | Model | Serving |
 |---|---|---|
-| Frontier agent | GPT-6.1-Sol, high reasoning effort | OpenAI Responses API |
-| Frontier agent (ablation) | Claude Opus 5.5 | Anthropic Messages API |
+| Frontier model | GPT-6.1-Sol, high reasoning effort | OpenAI Responses API |
+| Frontier model (ablation) | Claude Opus 5.5, xhigh reasoning effort | Anthropic Messages API |
 | SLM | Qwen3.8-27B-FP8 | vLLM, one GPU per replica, 131,072-token window |
 | SLM | MiniCPM5-2B (coding only) | vLLM, one GPU per replica, 131,072-token window |
 
@@ -24,7 +24,7 @@ Qwen3.8-27B-FP8 answers without thinking, with temperature 0.7 and top-p 0.8.
   `delegent claude`) and 131,072 tokens for the SLM; at most 32,768 output tokens per call.
 - Tool time: 60 minutes per task (90 on DeepSWE), not counting time spent waiting for a model.
 - The coding text of the [instruction](src/delegent/instructions/delegent.md) is the user-level `CLAUDE.md`; the
-  frontier agent alone runs without it.
+  frontier model alone runs without it.
 - Prompts: SWE-bench Verified gets "Please fix the following issue in the repository at {path}. Inspect the code,
   implement the fix, and run relevant tests. The repository and dependencies are available locally." followed by the
   problem statement; SWE-bench Pro adds the task's requirements and interface; DeepSWE uses the task's own
@@ -36,7 +36,7 @@ Qwen3.8-27B-FP8 answers without thinking, with temperature 0.7 and top-p 0.8.
 
 ## Agentic search
 
-- The frontier agent has `search` (top 10 BM25 hits with the best-matching passage) and `get_document` (8,000
+- The frontier model has `search` (top 10 BM25 hits with the best-matching passage) and `get_document` (8,000
   characters per page), at most 100 turns, then one turn without tools for the final answer.
 - With delegation it also has `Delegate` and the search text of the [instruction](src/delegent/instructions/delegent.md). Each call
   runs one SLM subagent of at most 80 steps, with no retries.
@@ -61,9 +61,9 @@ $0.0005 per task, which the paper's cost figures do not include.
   `delegent claude` starts one relay per Claude Code session.
 - **Replica pinning.** The research code placed subagent conversations on replicas with a load-aware sticky proxy;
   this release pins each conversation to a replica by a hash of its opening.
-- **Frontier tools on the BrowseComp-Plus corpus.** In the paper, the frontier agent searched the BrowseComp-Plus
+- **Frontier tools on the BrowseComp-Plus corpus.** In the paper, the frontier model searched the BrowseComp-Plus
   corpus with Claude Code's Bash and Read tools (ripgrep over the files), while its SLM subagent used BM25. This release
-  gives the frontier agent the same `search` and `get_document` tools on every corpus.
+  gives the frontier model the same `search` and `get_document` tools on every corpus.
 - **Subagent prompt on ClimbMix.** The research code told the SLM subagent to cite `/corpus/` paths on both corpora;
   this release names ClimbMix documents by docid.
 - **Not included.** Container images, task graders and the answer judge; use each benchmark's official harness.

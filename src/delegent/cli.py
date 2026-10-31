@@ -1,4 +1,4 @@
-"""delegent: a frontier agent that hands focused subtasks to a local SLM.
+"""delegent: a frontier model that hands focused subtasks to a local SLM.
 
   delegent claude  --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 [-- claude args]
   delegent relay   --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 --port 8787
@@ -219,7 +219,7 @@ def main(argv=None):
     p.add_argument('--index', help='local BM25 index (delegent index)')
     p.add_argument('--questions', required=True, help='JSONL with id and question')
     p.add_argument('--out', required=True)
-    p.add_argument('--no-delegate', action='store_true', help='the frontier agent alone (baseline)')
+    p.add_argument('--no-delegate', action='store_true', help='the frontier model alone (baseline)')
     p.add_argument('--workers', type=int, default=8)
     p.add_argument('--limit', type=int, default=0)
     p.add_argument('--max-steps', type=int, default=100)

@@ -1,68 +1,118 @@
 <h1 align="center">Delegent</h1>
 
 <p align="center">
-  <b>Let the frontier agent think. Let a local SLM do the legwork.</b>
+  <b>A multi-agent harness that reduces cost without sacrificing performance.</b><br>
+  Built on Claude Code. The frontier model leads; a small language model on your own GPU does the legwork.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  <img alt="Built on Claude Code" src="https://img.shields.io/badge/built%20on-Claude%20Code-orange.svg">
   <img alt="SLM on vLLM" src="https://img.shields.io/badge/SLM-vLLM-green.svg">
 </p>
 
+<table align="center">
+  <tr>
+    <td align="center"><h2>33%</h2>frontier cost on<br>long-horizon coding<br><sub>DeepSWE, 27B FP8 SLM</sub></td>
+    <td align="center"><h2>41%</h2>frontier cost on<br>agentic search<br><sub>694 questions, 27B FP8 SLM</sub></td>
+    <td align="center"><h2>34%</h2>with a 2B SLM<br>that fits on a laptop<br><sub>DeepSWE, MiniCPM5-2B</sub></td>
+    <td align="center"><h2>No loss</h2>in solved tasks<br>or correct answers<br><sub>nothing is trained</sub></td>
+  </tr>
+</table>
+
 Agents built on frontier models are expensive, because at every step the model re-reads its entire context. Much of
 that work is legwork: locating code, reproducing a bug, running tests, issuing searches, reading documents.
-**Delegent** keeps the frontier agent in charge of every task and hands this legwork to a small language model (SLM)
-running on a GPU you control. The SLM never answers on its own. The frontier agent reads its short report, checks what
+**Delegent** keeps the frontier model in charge of every task and hands this legwork to a small language model (SLM)
+running on a GPU you control. The SLM never answers on its own. The frontier model reads its short report, checks what
 matters, and writes the final patch or answer. Nothing is trained, so either model can be swapped.
-
-## Results
-
-With GPT-6.1-Sol as the frontier agent, Delegent cuts the frontier model's bill on long-horizon coding to a third,
-**with a 27B or even a 2B SLM**, and with no loss in task performance.
-
-| Task set | Frontier agent alone | + Qwen3.8-27B-FP8 | + MiniCPM5-2B |
-|:--|:-:|:-:|:-:|
-| SWE-bench Verified (50 tasks) | 46 solved | 46 solved, **44%** cost | 47 solved, **53%** cost |
-| SWE-bench Pro (75 tasks) | 63 solved | 63 solved, **37%** cost | 62 solved, **44%** cost |
-| DeepSWE v1.1 (50 tasks) | 29 solved | 29 solved, **33%** cost | 30 solved, **34%** cost |
-| Agentic search (694 questions) | 663 correct | 663 correct, **41%** cost | not evaluated |
-
-<sub>Cost is the frontier model's cost at API prices with prompt caching, relative to the frontier agent alone in the
-same harness. On DeepSWE it falls from $2.11 to $0.70 per task with Qwen3.8-27B-FP8 and to $0.71 with MiniCPM5-2B.
-Even with Qwen3.8-27B-FP8 paid for at API prices, a DeepSWE task costs 38% of the frontier agent alone.</sub>
-
-The savings grow with the legwork. The longer the frontier agent would work on a task by itself, the more of that work
-moves to the SLM, down to about a quarter of the cost on tasks that take it more than 200 calls alone.
-
-<p align="center">
-  <img src="assets/savings-vs-legwork.png" alt="Median relative frontier cost per coding task falls from 0.62 for tasks with fewer than 25 calls alone to 0.26 for tasks with more than 200" width="620">
-  <br>
-  <sub>Median frontier cost with Delegent relative to the frontier agent alone, per coding task, by how many calls the
-  frontier agent makes on the task alone (350 task pairs, three coding sets, both SLMs).</sub>
-</p>
 
 ## How it works
 
 <p align="center">
-  <img src="assets/overview.png" alt="The frontier agent delegates subtasks through the Delegent harness, which runs them in parallel on SLM subagents on a local GPU and returns their reports with an automatic quote check" width="560">
+  <img src="assets/overview.png" alt="The user talks to the main loop, where the frontier model leads the task and spawns stacked SLM subagents through the Agent and Delegate tools; both loops act on the environment (a repository or a corpus) through tools such as search, Bash, Read and Edit, plus get_document for the main loop and visit for the subagents" width="640">
+  <br>
+  <sub>Delegent starts from stock Claude Code, and everything in orange is what it adds. The user talks to the main
+  loop, where the frontier model leads the task and spawns subagents. The loops share most tools, and each has a few of
+  its own.</sub>
 </p>
 
-Delegent is one harness with one rule: **calls from the agent in charge go to the frontier model, and every subtask
-runs on the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context,
-and only their final reports reach the frontier agent, never their tool output.
+Delegent is one harness with one rule: **calls from the main loop go to the frontier model, and every subtask runs on
+the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context, and only
+their final reports reach the frontier model, never their tool output. On top of stock Claude Code, Delegent adds:
 
-- **One instruction.** A short [instruction](src/delegent/instructions/delegent.md) covers both kinds of delegation,
-  Claude Code's subagents for coding and the `Delegate` tool for search. It tells the frontier agent what to delegate
-  and to keep its own tool use to a few targeted checks.
-- **Coding.** Claude Code runs unmodified. Its main agent talks to the frontier model, while its subagents and its small
-  auxiliary model talk to the SLM. The instruction, installed as a user-level `CLAUDE.md`, asks the frontier agent to
-  delegate investigation and verification and to make every code change itself.
-- **Agentic search.** The frontier agent gets a `Delegate` tool next to `search` and `get_document`. A delegated SLM
-  subagent searches the same corpus and reports an answer with evidence, and Delegent looks up every evidence line in
-  the cited document before the report comes back.
+- **A relay that routes model calls by role.** Claude Code runs unmodified. Its main loop talks to the frontier model,
+  while its subagents and its small auxiliary model talk to the SLM. The frontier model can be an OpenAI or an
+  Anthropic model.
+- **One short instruction.** The [instruction](src/delegent/instructions/delegent.md) tells the frontier model what to
+  delegate and to keep its own tool use to a few targeted checks. For coding, it is installed as a user-level
+  `CLAUDE.md` and asks the frontier model to delegate investigation and verification and to make every code change
+  itself.
+- **Search tools and a `Delegate` tool.** For agentic search, the frontier model gets `search`, `get_document` and
+  `Delegate`. A delegated SLM subagent searches the same corpus with `search` and `visit` and reports an answer with
+  evidence.
+- **A quote check.** Before a search report comes back, Delegent looks up every evidence line in the cited document
+  and notes whether it was found verbatim.
 - **Caching on both sides.** Frontier calls carry a stable prompt-cache key per conversation, and each SLM subagent is
   pinned to one vLLM replica, so its growing prefix stays cached there.
+
+## Results
+
+All numbers are from our paper, with GPT-6.1-Sol at high reasoning effort as the frontier model, run in the same
+harness with and without delegation. Cost is the frontier model's cost at API prices with prompt caching.
+
+### Long-horizon coding
+
+| Task set | Frontier model alone | + Qwen3.8-27B-FP8 | + MiniCPM5-2B |
+|:--|:-:|:-:|:-:|
+| SWE-bench Verified (50 tasks) | 46 solved, $0.244 | 46 solved, **44%** cost | 47 solved, **53%** cost |
+| SWE-bench Pro (75 tasks) | 63 solved, $0.617 | 63 solved, **37%** cost | 62 solved, **44%** cost |
+| DeepSWE v1.1 (50 tasks) | 29 solved, $2.110 | 29 solved, **33%** cost | 30 solved, **34%** cost |
+
+<sub>Dollar amounts are frontier cost per task. On DeepSWE it falls from $2.11 to $0.70 with Qwen3.8-27B-FP8 and to
+$0.71 with MiniCPM5-2B. Even with Qwen3.8-27B-FP8 paid for at API prices, a DeepSWE task costs 38% of the frontier
+model alone.</sub>
+
+### Agentic search
+
+| Dataset | Frontier model alone | + Qwen3.8-27B-FP8 |
+|:--|:-:|:-:|
+| BrowseComp-Plus, own corpus (200) | 193 correct, $0.114 | 192 correct, **63%** cost |
+| BrowseComp-Plus (80) | 72 correct, $0.211 | 71 correct, **31%** cost |
+| Total Recall QA (68) | 64 correct, $0.048 | 67 correct, **31%** cost |
+| HotpotQA (204) | 198 correct, $0.033 | 198 correct, **25%** cost |
+| DeepSearchQA, find one (71) | 70 correct, $0.067 | 70 correct, **29%** cost |
+| DeepSearchQA, find all (71) | 66 correct, $0.121 | 65 correct, **26%** cost |
+| **All (694)** | **663 correct, $0.091** | **663 correct, 41% cost** |
+
+<sub>Dollar amounts are frontier cost per question. All datasets except the first are from the CMASS suite over the
+ClimbMix corpus, searched with BM25.</sub>
+
+### The savings grow with the legwork
+
+The longer the frontier model would work on a task by itself, the more of that work moves to the SLM, down to about a
+quarter of the cost on tasks that take it more than 200 calls alone.
+
+<p align="center">
+  <img src="assets/savings-vs-legwork.png" alt="Median relative frontier cost per coding task falls from 0.62 for tasks with fewer than 25 calls alone to 0.26 for tasks with more than 200" width="620">
+  <br>
+  <sub>Median frontier cost with Delegent relative to the frontier model alone, per coding task, by how many calls the
+  frontier model makes on the task alone (350 task pairs, three coding sets, both SLMs).</sub>
+</p>
+
+### Two frontier models
+
+The frontier model behind Delegent can change freely. On DeepSWE, we also ran Claude Opus 5.5 at xhigh effort.
+
+| Per DeepSWE task (50 tasks) | GPT-6.1-Sol | Claude Opus 5.5 |
+|:--|:-:|:-:|
+| How it works alone | long loop of edit, test, fix | plans first, then acts |
+| Solved alone | 29 | 34 |
+| Solved with an SLM | 29.5 | 38 |
+| Frontier cost with an SLM | **34%** | **69%** |
+
+<sub>With an SLM, values average the two SLMs. Delegent saves the most for a frontier model that would otherwise do
+much of the legwork itself.</sub>
 
 ## Quick start
 
@@ -146,7 +196,7 @@ delegent search --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Q
   --corpus local --corpus-root docs/ --index index/ --questions questions.jsonl --out runs/local
 ```
 
-Add `--no-delegate` to run the frontier agent alone as a baseline. Every answer lands in `<out>/questions/<id>.json`
+Add `--no-delegate` to run the frontier model alone as a baseline. Every answer lands in `<out>/questions/<id>.json`
 with its frontier usage and delegations.
 
 ### Measuring cost

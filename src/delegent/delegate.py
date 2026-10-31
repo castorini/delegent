@@ -1,10 +1,10 @@
 """Delegation to the SLM.
 
-A delegated subtask runs in a fresh context on the SLM, and only its final report returns to the frontier agent. For
+A delegated subtask runs in a fresh context on the SLM, and only its final report returns to the frontier model. For
 coding, the subtask is a Claude Code subagent (Claude Code's own Agent tool, routed to the SLM by the relay). For
-search, the frontier agent calls the `Delegate` tool defined here: the SLM subagent searches the corpus in its own tool
+search, the frontier model calls the `Delegate` tool defined here: the SLM subagent searches the corpus in its own tool
 loop and returns a report with evidence and a confidence, and the harness looks up every evidence line in the cited
-document before the report reaches the frontier agent.
+document before the report reaches the frontier model.
 
 The search subagent uses the research loop and tool protocol of AREX-Turbo (search, visit, update_context, finish),
 backed by the corpus; its prompts are vendored in delegent/prompts/arex.py.

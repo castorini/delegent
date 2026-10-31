@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "delegent"
 version = "0.2.0"
-description = "A frontier agent that hands focused subtasks to a local small language model"
+description = "A multi-agent harness built on Claude Code: the frontier model leads, a local small language model does the legwork"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
