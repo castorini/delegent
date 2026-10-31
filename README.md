@@ -120,6 +120,8 @@ much of the legwork itself.</sub>
 
 ```bash
 pip install git+https://github.com/castorini/Delegent.git
+# or, from a downloaded copy of this repository
+pip install .
 ```
 
 For coding, also install [Claude Code](https://code.claude.com/docs). Delegent does not include or modify it; it points
