@@ -57,6 +57,8 @@ class ClimbMix:
 
     def __init__(self, api=None, token=None, cache=None, max_inflight=3):
         self.api = (api or os.environ.get('CLIMBMIX_API', 'https://api.castorini.uwaterloo.ca/v1/climbmix-400b')).rstrip('/')
+        if '://' not in self.api:
+            raise ValueError('set CLIMBMIX_API to the base URL of a ClimbMix search endpoint')
         token = token or os.environ.get('CLIMBMIX_TOKEN')
         if not token and os.environ.get('CLIMBMIX_TOKEN_FILE'):
             token = Path(os.environ['CLIMBMIX_TOKEN_FILE']).read_text().strip()

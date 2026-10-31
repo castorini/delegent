@@ -175,6 +175,7 @@ Questions are JSON lines with an `id` and a `question`.
 
 ```bash
 # over the ClimbMix corpus (BM25 search API)
+export CLIMBMIX_API=...     # base URL of your ClimbMix search endpoint
 export CLIMBMIX_TOKEN=...
 delegent search --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
   --corpus climbmix --questions questions.jsonl --out runs/climbmix
