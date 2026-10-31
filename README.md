@@ -157,19 +157,6 @@ When Claude Code exits, Delegent prints the frontier cost of the session. For a 
 
 ## Usage
 
-### One command for any task
-
-```bash
-delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
-  --task "Fix the failing test in tests/test_parser.py" --repo path/to/repo
-delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
-  --task "Which 1990s film ...?" --corpus climbmix
-```
-
-Before the task starts, the frontier model reads it and says whether it is a coding task or a search question, and
-Delegent runs it as `delegent claude` or `delegent search` would. `--pick-by environment` decides from what the task
-comes with instead: a repository means coding, a corpus means search.
-
 ### Coding
 
 Everything after `--` goes to Claude Code. A headless run on one issue:
@@ -200,6 +187,19 @@ delegent search --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Q
 
 Add `--no-delegate` to run the frontier model alone as a baseline. Every answer lands in `<out>/questions/<id>.json`
 with its frontier usage and delegations.
+
+### Optional: one command that picks the loop
+
+`delegent run` is a small convenience on top of `delegent claude` and `delegent search`. By default it picks the loop
+from what the task comes with: a repository means coding, a corpus means search. With `--pick-by model`, the frontier
+model reads the task first and says whether it is a coding task or a search question, at the cost of one short call.
+
+```bash
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Fix the failing test in tests/test_parser.py" --repo path/to/repo
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Which 1990s film ...?" --corpus climbmix --pick-by model
+```
 
 ### Measuring cost
 

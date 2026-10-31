@@ -142,7 +142,8 @@ def agent_notes(mode):
 
 
 def cmd_run(args):
-    """One entry point: pick the loop for the task, then run it exactly as `claude` or `search` would."""
+    """One entry point: pick the loop for the task (by default from what it comes with; optionally, the frontier model
+    picks), then run it exactly as `claude` or `search` would."""
     from . import pick
     task = Path(args.task_file).read_text() if args.task_file else args.task
     if not task:
@@ -176,7 +177,7 @@ def cmd_run(args):
         print(result['answer'])
         print('delegent: ' + summary(ledger.rows, args.prices), file=sys.stderr)
         return
-    sys.exit('could not tell whether the task is coding or search; pass --pick-by environment')
+    sys.exit('could not tell whether the task is coding or search; give --repo or --corpus')
 
 
 def cmd_index(args):
@@ -229,7 +230,7 @@ def main(argv=None):
     p.add_argument('--prices', action='append', help=price_help)
     p.set_defaults(func=cmd_search)
 
-    p = sub.add_parser('run', help='one entry point: pick coding or search for the task, then run it')
+    p = sub.add_parser('run', help='one entry point for coding or search (optional; see claude and search)')
     add_models(p)
     p.add_argument('--task', help='the task or question')
     p.add_argument('--task-file')
@@ -237,8 +238,8 @@ def main(argv=None):
     p.add_argument('--corpus', choices=['climbmix', 'local'], help='corpus to search (search)')
     p.add_argument('--corpus-root')
     p.add_argument('--index')
-    p.add_argument('--pick-by', choices=['model', 'environment'], default='model',
-                   help='who picks the loop: the frontier model (default) or what the task comes with')
+    p.add_argument('--pick-by', choices=['environment', 'model'], default='environment',
+                   help='who picks the loop: what the task comes with (default) or, optionally, the frontier model')
     p.add_argument('--frontier-context', type=int, default=1_000_000)
     p.add_argument('--no-instruction', action='store_true')
     p.add_argument('--config-dir')
