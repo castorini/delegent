@@ -67,3 +67,9 @@ $0.0005 per task, which the paper's cost figures do not include.
 - **Subagent prompt on ClimbMix.** The research code told the SLM subagent to cite `/corpus/` paths on both corpora;
   this release names ClimbMix documents by docid.
 - **Not included.** Container images, task graders and the answer judge; use each benchmark's official harness.
+
+## Merged mode (not used in the paper)
+
+`delegent claude --corpus ...` serves `search`, `get_document` and `Delegate` to Claude Code over MCP
+(`src/delegent/mcp.py`), so one Claude Code session can code and search. The paper runs search in the separate search
+loop. The README compares both on 80 BrowseComp-Plus questions over ClimbMix.

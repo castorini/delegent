@@ -189,10 +189,36 @@ delegent search --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Q
 Add `--no-delegate` to run the frontier model alone as a baseline. Every answer lands in `<out>/questions/<id>.json`
 with its frontier usage and delegations.
 
+### Optional: one session for coding and search
+
+By default the two uses run in separate loops. For a session that alternates between coding and search, or a task that
+needs both, add `--corpus` to `delegent claude`: the same Claude Code session then also gets `search`, `get_document`
+and `Delegate` over that corpus (served to Claude Code over MCP), and its instruction covers both kinds of delegation.
+
+```bash
+delegent claude --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --corpus local --corpus-root docs/ --index index/
+```
+
+On pure search, the separate search loop is cheaper. On 80 BrowseComp-Plus questions over ClimbMix, with GPT-6.1-Sol and
+Qwen3.8-27B-FP8:
+
+| Main loop | Correct | Frontier cost | Frontier calls per question |
+|:--|:-:|:-:|:-:|
+| Search loop, frontier model alone | 73 / 72 (two runs) | 100% | 15.0 / 13.9 |
+| Search loop, with `Delegate` (default) | 71 | **33%** | 6.2 |
+| Claude Code, frontier model alone | 73 | 180% | 27.2 |
+| Claude Code, with `Delegate` (merged mode) | 71 | 108% | 14.4 |
+
+<sub>Cost is relative to the search loop with the frontier model alone. The merged mode keeps accuracy and still roughly
+halves Claude Code's own cost on search, but Claude Code's main loop makes about twice as many calls as the search loop,
+and delegated searches in it took longer (median 747 s per question).</sub>
+
 ### Optional: one command that picks the loop
 
 `delegent run` is a small convenience on top of `delegent claude` and `delegent search`. By default it picks the loop
-from what the task comes with: a repository means coding, a corpus means search. With `--pick-by model`, the frontier
+from what the task comes with: a repository means coding, a corpus means search, and both mean one session in the
+merged mode above. With `--pick-by model`, the frontier
 model reads the task first and says whether it is a coding task or a search question, at the cost of one short call.
 
 ```bash
@@ -228,6 +254,7 @@ Prices are dollars per million uncached input, cached input and output tokens; r
 | `src/delegent/slm.py` | SLM backend: vLLM replicas, conversation pinning, window clamping |
 | `src/delegent/delegate.py` | the `Delegate` tool, the SLM search subagent and the evidence check |
 | `src/delegent/agent.py` | the search agent loop |
+| `src/delegent/mcp.py` | optional merged mode: corpus tools and `Delegate` for Claude Code over MCP |
 | `src/delegent/corpus.py`, `bm25.py` | ClimbMix client and local BM25 index |
 | `src/delegent/instructions/delegent.md` | the instruction for coding and search |
 | `samples/` | task and question ids of the paper's evaluation |

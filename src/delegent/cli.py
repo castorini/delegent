@@ -1,6 +1,7 @@
 """delegent: a frontier model that hands focused subtasks to a local SLM.
 
   delegent claude  --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 [-- claude args]
+                   [--corpus climbmix]   (optional: the same session can also search the corpus and delegate search)
   delegent relay   --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 --port 8787
   delegent search  --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \\
                    --corpus climbmix --questions questions.jsonl --out runs/search
@@ -62,12 +63,22 @@ def cmd_claude(args):
     relay.start()
     config = Path(args.config_dir) if args.config_dir else Path(tempfile.mkdtemp(prefix='delegent-claude-'))
     config.mkdir(parents=True, exist_ok=True)
-    if not args.no_instruction:   # the coding instruction as a user-level CLAUDE.md
+    tools, extra = {'Agent'}, []
+    if getattr(args, 'corpus', None):   # optional merged mode: corpus tools and Delegate over MCP (delegent/mcp.py)
+        from .corpus import open_corpus
+        from .delegate import Delegate
+        from .mcp import CorpusTools
+        corpus = open_corpus(args.corpus, args.corpus_root, args.index)
+        server = CorpusTools(corpus, Delegate(make_slm(args), corpus, max_steps=args.slm_max_steps),
+                             ledger=ledger).start()
+        (config / 'mcp.json').write_text(json.dumps(server.config()))
+        tools, extra = {'Agent', 'Delegate'}, ['--mcp-config', str(config / 'mcp.json')]
+    if not args.no_instruction:   # the instruction as a user-level CLAUDE.md
         from .agent import instruction
-        (config / 'CLAUDE.md').write_text(instruction({'Agent'}))
+        (config / 'CLAUDE.md').write_text(instruction(tools))
     env = {**os.environ, **claude_env(relay, args.slm_model, args.frontier_context), 'CLAUDE_CONFIG_DIR': str(config)}
     passthrough = args.claude_args[1:] if args.claude_args[:1] == ['--'] else args.claude_args
-    proc = subprocess.Popen([claude, '--model', args.frontier, *passthrough], env=env)
+    proc = subprocess.Popen([claude, '--model', args.frontier, *extra, *passthrough], env=env)
     try:
         code = proc.wait()
     except KeyboardInterrupt:
@@ -148,7 +159,9 @@ def cmd_run(args):
     task = Path(args.task_file).read_text() if args.task_file else args.task
     if not task:
         sys.exit('give --task or --task-file')
-    if args.pick_by == 'environment':
+    if args.repo and args.corpus:   # both: one Claude Code session with the corpus tools too (optional merged mode)
+        kind = 'coding'
+    elif args.pick_by == 'environment':
         kind = pick.by_environment(args.repo, args.corpus)
     else:
         frontier = frontier_backends.make(args.frontier, 'low')
@@ -159,6 +172,8 @@ def cmd_run(args):
     if kind == 'coding':
         if not args.repo:
             sys.exit('the task looks like coding, but no --repo was given')
+        if args.corpus:
+            print('delegent: with the corpus tools (merged mode)', file=sys.stderr)
         os.chdir(args.repo)
         rest = args.claude_args[1:] if args.claude_args[:1] == ['--'] else args.claude_args
         args.claude_args = ['-p', task, *rest]
@@ -205,9 +220,14 @@ def main(argv=None):
     p = sub.add_parser('claude', help='run Claude Code through the relay, with the coding instruction')
     add_models(p)
     p.add_argument('--frontier-context', type=int, default=1_000_000)
-    p.add_argument('--no-instruction', action='store_true', help='leave out the coding instruction (CLAUDE.md)')
+    p.add_argument('--no-instruction', action='store_true', help='leave out the instruction (CLAUDE.md)')
     p.add_argument('--config-dir', help='CLAUDE_CONFIG_DIR to use (default: a fresh temporary one)')
     p.add_argument('--claude-bin')
+    p.add_argument('--corpus', choices=['climbmix', 'local'],
+                   help='optional merged mode: also give the session search, get_document and Delegate over this corpus')
+    p.add_argument('--corpus-root', help='local corpus directory (with --corpus local)')
+    p.add_argument('--index', help='local BM25 index (with --corpus local)')
+    p.add_argument('--slm-max-steps', type=int, default=80, help='step cap of a delegated search subagent')
     p.add_argument('--ledger', default='delegent-usage.jsonl')
     p.add_argument('--prices', action='append', help=price_help)
     p.add_argument('claude_args', nargs=argparse.REMAINDER, help='arguments passed to claude (after --)')
