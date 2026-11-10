@@ -124,9 +124,10 @@ pip install git+https://github.com/castorini/Delegent.git
 pip install .
 ```
 
-For coding, also install [Claude Code](https://code.claude.com/docs). Delegent does not include or modify it; it points
-an unmodified Claude Code at the relay through Claude Code's documented `ANTHROPIC_BASE_URL` setting, and your use of
-Claude Code remains subject to Anthropic's terms.
+For coding, also install [Claude Code](https://code.claude.com/docs). Delegent does not include Claude Code or change
+its code. It runs Claude Code as installed, points it at the relay through Claude Code's documented
+`ANTHROPIC_BASE_URL` setting, and adds the delegation instruction as a user-level `CLAUDE.md` (in a separate config
+directory, so your own settings are untouched). Your use of Claude Code remains subject to Anthropic's terms.
 
 **2. Serve an SLM** with vLLM on your GPU.
 
@@ -189,7 +190,36 @@ delegent search --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Q
 Add `--no-delegate` to run the frontier model alone as a baseline. Every answer lands in `<out>/questions/<id>.json`
 with its frontier usage and delegations.
 
-### Optional: one session for coding and search
+### Measuring cost
+
+Every model call, frontier and SLM alike, is written to a usage ledger (`delegent-usage.jsonl`, or
+`<out>/usage.jsonl` for search).
+
+```bash
+delegent cost delegent-usage.jsonl --prices gpt-6.1-sol=2,0.10,10
+```
+
+Prices are dollars per million uncached input, cached input and output tokens; reasoning tokens count as output.
+
+### Optional extras
+
+Neither is needed to reproduce the paper, which runs coding and search in separate loops as above.
+
+#### One command that picks the loop
+
+`delegent run` is a small convenience on top of `delegent claude` and `delegent search`. By default it picks the loop
+from what the task comes with: a repository means coding, a corpus means search, and both mean one session in the
+merged mode below. With `--pick-by model`, the frontier
+model reads the task first and says whether it is a coding task or a search question, at the cost of one short call.
+
+```bash
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Fix the failing test in tests/test_parser.py" --repo path/to/repo
+delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --task "Which 1990s film ...?" --corpus climbmix --pick-by model
+```
+
+#### One session for coding and search
 
 By default the two uses run in separate loops. For a session that alternates between coding and search, or a task that
 needs both, add `--corpus` to `delegent claude`: the same Claude Code session then also gets `search`, `get_document`
@@ -213,31 +243,6 @@ Qwen3.8-27B-FP8:
 <sub>Cost is relative to the search loop with the frontier model alone. The merged mode keeps accuracy and still roughly
 halves Claude Code's own cost on search, but Claude Code's main loop makes about twice as many calls as the search loop,
 and delegated searches in it took longer (median 747 s per question).</sub>
-
-### Optional: one command that picks the loop
-
-`delegent run` is a small convenience on top of `delegent claude` and `delegent search`. By default it picks the loop
-from what the task comes with: a repository means coding, a corpus means search, and both mean one session in the
-merged mode above. With `--pick-by model`, the frontier
-model reads the task first and says whether it is a coding task or a search question, at the cost of one short call.
-
-```bash
-delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
-  --task "Fix the failing test in tests/test_parser.py" --repo path/to/repo
-delegent run --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
-  --task "Which 1990s film ...?" --corpus climbmix --pick-by model
-```
-
-### Measuring cost
-
-Every model call, frontier and SLM alike, is written to a usage ledger (`delegent-usage.jsonl`, or
-`<out>/usage.jsonl` for search).
-
-```bash
-delegent cost delegent-usage.jsonl --prices gpt-6.1-sol=2,0.10,10
-```
-
-Prices are dollars per million uncached input, cached input and output tokens; reasoning tokens count as output.
 
 ## Reproducing the paper
 
