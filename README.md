@@ -118,7 +118,7 @@ much of the legwork itself.</sub>
 **1. Install.**
 
 ```bash
-pip install git+https://github.com/castorini/Delegent.git
+pip install git+https://github.com/castorini/delegent.git
 # or, from a downloaded copy of this repository
 pip install .
 ```
