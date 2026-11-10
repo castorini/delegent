@@ -41,9 +41,8 @@ Delegent is one harness with one rule: **calls from the main loop go to the fron
 the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context, and only
 their final reports reach the frontier model, never their tool output. On top of stock Claude Code, Delegent adds:
 
-- **A relay that routes model calls by role.** Claude Code runs unmodified. Its main loop talks to the frontier model,
-  while its subagents and its small auxiliary model talk to the SLM. The frontier model can be an OpenAI or an
-  Anthropic model.
+- **A relay that routes model calls by role.** Claude Code's main loop talks to the frontier model, while its subagents
+  and its small auxiliary model talk to the SLM. The frontier model can be an OpenAI or an Anthropic model.
 - **One short instruction.** The [instruction](src/delegent/instructions/delegent.md) tells the frontier model what to
   delegate and to keep its own tool use to a few targeted checks. For coding, it is installed as a user-level
   `CLAUDE.md` and asks the frontier model to delegate investigation and verification and to make every code change
@@ -124,10 +123,12 @@ pip install git+https://github.com/castorini/Delegent.git
 pip install .
 ```
 
-For coding, also install [Claude Code](https://code.claude.com/docs). Delegent does not include Claude Code or change
-its code. It runs Claude Code as installed, points it at the relay through Claude Code's documented
-`ANTHROPIC_BASE_URL` setting, and adds the delegation instruction as a user-level `CLAUDE.md` (in a separate config
-directory, so your own settings are untouched). Your use of Claude Code remains subject to Anthropic's terms.
+For coding, also install [Claude Code](https://code.claude.com/docs). Delegent builds its coding harness around your
+Claude Code installation: the relay takes Claude Code's model calls (through Claude Code's documented
+`ANTHROPIC_BASE_URL` setting) and sends the main loop's calls to the frontier model and the subagents' calls to the
+SLM, and the delegation instruction is added as a user-level `CLAUDE.md` in a separate config directory, so your own
+Claude Code settings are untouched. Delegent does not bundle Claude Code, and your use of Claude Code
+remains subject to Anthropic's terms.
 
 **2. Serve an SLM** with vLLM on your GPU.
 

@@ -1,8 +1,8 @@
 """The relay between an agent and its two models.
 
-It speaks the Anthropic Messages API, so Claude Code runs unmodified. Each call is routed by the model it names:
-calls for the frontier model go to the frontier backend, every other call (subagents, the small/fast model) goes to
-the SLM. Claude Code is pointed at the relay with ANTHROPIC_BASE_URL and told which model each role uses
+It speaks the Anthropic Messages API, so Claude Code talks to it as it would to Anthropic. Each call is routed by
+the model it names: calls for the frontier model go to the frontier backend, every other call (subagents, the
+small/fast model) goes to the SLM. Claude Code is pointed at the relay with ANTHROPIC_BASE_URL and told which model each role uses
 (`claude_env`), so the routing follows Claude Code's own roles.
 """
 import json
