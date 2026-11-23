@@ -1,4 +1,4 @@
-<h1 align="center">Delegent</h1>
+<h1 align="center">delegent</h1>
 
 <p align="center">
   <b>A multi-agent harness that reduces cost without sacrificing performance.</b><br>
@@ -23,7 +23,7 @@
 
 Agents built on frontier models are expensive, because at every step the model re-reads its entire context. Much of
 that work is legwork: locating code, reproducing a bug, running tests, issuing searches, reading documents.
-**Delegent** keeps the frontier model in charge of every task and hands this legwork to a small language model (SLM)
+**delegent** keeps the frontier model in charge of every task and hands this legwork to a small language model (SLM)
 running on a GPU you control. The SLM never answers on its own. The frontier model reads its short report, checks what
 matters, and writes the final patch or answer. Nothing is trained, so either model can be swapped.
 
@@ -38,14 +38,14 @@ matters, and writes the final patch or answer. Nothing is trained, so either mod
 <p align="center">
   <img src="assets/overview.png" alt="The user talks to the main loop, where the frontier model leads the task and spawns stacked SLM subagents through the Agent and Delegate tools; both loops act on the environment (a repository or a corpus) through tools such as search, Bash, Read and Edit, plus get_document for the main loop and visit for the subagents" width="640">
   <br>
-  <sub>Delegent starts from stock Claude Code, and everything in orange is what it adds. The user talks to the main
+  <sub>delegent starts from stock Claude Code, and everything in orange is what it adds. The user talks to the main
   loop, where the frontier model leads the task and spawns subagents. The loops share most tools, and each has a few of
   its own.</sub>
 </p>
 
-Delegent is one harness with one rule: **calls from the main loop go to the frontier model, and every subtask runs on
+delegent is one harness with one rule: **calls from the main loop go to the frontier model, and every subtask runs on
 the SLM.** Subtasks issued in the same turn run in parallel, each in its own tool loop with a fresh context, and only
-their final reports reach the frontier model, never their tool output. On top of stock Claude Code, Delegent adds:
+their final reports reach the frontier model, never their tool output. On top of stock Claude Code, delegent adds:
 
 - **A relay that routes model calls by role.** Claude Code's main loop talks to the frontier model, while its subagents
   and its small auxiliary model talk to the SLM. The frontier model can be an OpenAI or an Anthropic model.
@@ -56,7 +56,7 @@ their final reports reach the frontier model, never their tool output. On top of
 - **Search tools and a `Delegate` tool.** For agentic search, the frontier model gets `search`, `get_document` and
   `Delegate`. A delegated SLM subagent searches the same corpus with `search` and `visit` and reports an answer with
   evidence.
-- **A quote check.** Before a search report comes back, Delegent looks up every evidence line in the cited document
+- **A quote check.** Before a search report comes back, delegent looks up every evidence line in the cited document
   and notes whether it was found verbatim.
 - **Caching on both sides.** Frontier calls carry a stable prompt-cache key per conversation, and each SLM subagent is
   pinned to one vLLM replica, so its growing prefix stays cached there.
@@ -101,13 +101,13 @@ quarter of the cost on tasks that take it more than 200 calls alone.
 <p align="center">
   <img src="assets/savings-vs-legwork.png" alt="Median relative frontier cost per coding task falls from 0.62 for tasks with fewer than 25 calls alone to 0.26 for tasks with more than 200" width="620">
   <br>
-  <sub>Median frontier cost with Delegent relative to the frontier model alone, per coding task, by how many calls the
+  <sub>Median frontier cost with delegent relative to the frontier model alone, per coding task, by how many calls the
   frontier model makes on the task alone (350 task pairs, three coding sets, both SLMs).</sub>
 </p>
 
 ### Two frontier models
 
-The frontier model behind Delegent can change freely. On DeepSWE, we also ran Claude Opus 5.5 at xhigh effort.
+The frontier model behind delegent can change freely. On DeepSWE, we also ran Claude Opus 5.5 at xhigh effort.
 
 | Per DeepSWE task (50 tasks) | GPT-6.1-Sol | Claude Opus 5.5 |
 |:--|:-:|:-:|
@@ -116,7 +116,7 @@ The frontier model behind Delegent can change freely. On DeepSWE, we also ran Cl
 | Solved with an SLM | 29.5 | 38 |
 | Frontier cost with an SLM | **34%** | **69%** |
 
-<sub>With an SLM, values average the two SLMs. Delegent saves the most for a frontier model that would otherwise do
+<sub>With an SLM, values average the two SLMs. delegent saves the most for a frontier model that would otherwise do
 much of the legwork itself.</sub>
 
 ## Requirements
@@ -130,7 +130,7 @@ much of the legwork itself.</sub>
 | [Codex](https://github.com/openai/codex) (`codex` on your `PATH`) | `delegent install codex` only | tested with 0.162.1 |
 | A ClimbMix search endpoint | `--corpus climbmix` only | `CLIMBMIX_API` and `CLIMBMIX_TOKEN`; your own documents need nothing beyond `delegent index` |
 
-Delegent runs on Linux and macOS. The SLM can be on another machine: `--slm` takes any reachable vLLM URL.
+delegent runs on Linux and macOS. The SLM can be on another machine: `--slm` takes any reachable vLLM URL.
 
 ## Quick start
 
@@ -142,11 +142,11 @@ pip install git+https://github.com/castorini/delegent.git
 pip install .
 ```
 
-For coding, also install [Claude Code](https://code.claude.com/docs). Delegent builds its coding harness around your
+For coding, also install [Claude Code](https://code.claude.com/docs). delegent builds its coding harness around your
 Claude Code installation: the relay takes Claude Code's model calls (through Claude Code's documented
 `ANTHROPIC_BASE_URL` setting) and sends the main loop's calls to the frontier model and the subagents' calls to the
 SLM, and the delegation instruction is added as a user-level `CLAUDE.md` in a separate config directory, so your own
-Claude Code settings are untouched. Delegent does not bundle Claude Code, and your use of Claude Code
+Claude Code settings are untouched. delegent does not bundle Claude Code, and your use of Claude Code
 remains subject to Anthropic's terms.
 
 **2. Serve an SLM** with vLLM on your GPU.
@@ -173,7 +173,7 @@ export OPENAI_API_KEY=...
 delegent claude --frontier gpt-6.1-sol --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8
 ```
 
-When Claude Code exits, Delegent prints the frontier cost of the session. For a Claude model in charge, pass
+When Claude Code exits, delegent prints the frontier cost of the session. For a Claude model in charge, pass
 `--frontier claude-...` and set `ANTHROPIC_API_KEY` instead.
 
 ## Usage
@@ -228,7 +228,7 @@ None of these is needed to reproduce the paper, which runs coding and search in 
 #### Inside your own Claude Code or Codex
 
 `delegent claude` is a launcher: it starts Claude Code with its own configuration and its own frontier backend. If you
-would rather keep the agent you already use, with your own login, settings and frontier model, install Delegent into
+would rather keep the agent you already use, with your own login, settings and frontier model, install delegent into
 it. Both integrations follow the same rule as the launcher, routed by the same relay: the main loop keeps your
 frontier model, and every subagent runs on the SLM.
 
@@ -367,7 +367,7 @@ Models and endpoints are command-line options. The environment holds credentials
 | `DELEGENT_OPENAI_API` | `delegent serve` | base URL that Codex's own calls pass through to (also `--openai-upstream`) |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | `install`, `uninstall` | the agent's config directory, if not `~/.claude` or `~/.codex` (also `--config-dir`) |
 
-### Files Delegent writes
+### Files delegent writes
 
 | File | Written by | Contents |
 |:--|:--|:--|
@@ -454,7 +454,7 @@ test, where things are, and what not to change. The facts an agent most often ne
 | `src/delegent/delegate.py` | the `Delegate` tool, the SLM search subagent and the evidence check |
 | `src/delegent/agent.py` | the search agent loop |
 | `src/delegent/mcp.py` | corpus tools and `Delegate` over MCP, for the merged mode and the integrations |
-| `src/delegent/install.py` | optional: `delegent install claude\|codex`, Delegent inside your own agent |
+| `src/delegent/install.py` | optional: `delegent install claude\|codex`, delegent inside your own agent |
 | `src/delegent/corpus.py`, `bm25.py` | ClimbMix client and local BM25 index |
 | `src/delegent/instructions/delegent.md` | the instruction for coding and search |
 | `samples/` | task and question ids of the paper's evaluation |
@@ -465,7 +465,7 @@ test, where things are, and what not to change. The facts an agent most often ne
 
 ## Citation
 
-If you use Delegent, please cite our paper:
+If you use delegent, please cite our paper:
 
 ```bibtex
 @article{gu2026delegent,

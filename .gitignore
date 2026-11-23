@@ -217,7 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Delegent credentials and machine-local configuration
+# delegent credentials and machine-local configuration
 .env*
 !.env.example
 .curlrc*

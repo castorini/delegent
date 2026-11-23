@@ -169,7 +169,7 @@ def test_codex_profile_and_catalog(tmp_path):
         profile = tomllib.loads(text)
         assert profile['model_provider'] == 'delegent' and profile['agents'] == {'default_subagent_model': 'slm-x'}
         assert profile['model_providers']['delegent'] == {
-            'name': 'Delegent relay', 'base_url': 'http://127.0.0.1:8787/codex', 'env_key': 'OPENAI_API_KEY',
+            'name': 'delegent relay', 'base_url': 'http://127.0.0.1:8787/codex', 'env_key': 'OPENAI_API_KEY',
             'wire_api': 'responses', 'supports_websockets': False}
         assert profile['developer_instructions'].strip() == install.instruction({'Codex'}).strip()
     models = [{'slug': 'big', 'tool_mode': 'code_mode_only', 'multi_agent_version': 'v2', 'context_window': 372000},

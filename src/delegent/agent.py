@@ -44,7 +44,7 @@ MULTI_ANSWER = {
 
 
 def instruction(tools):
-    """The Delegent instruction for an agent with these tools: one part per subtask tool (Claude Code's Agent tool,
+    """The delegent instruction for an agent with these tools: one part per subtask tool (Claude Code's Agent tool,
     the Delegate tool), each given only to an agent that has that tool."""
     text = resources.files('delegent.instructions').joinpath('delegent.md').read_text()
     parts, name = {}, None

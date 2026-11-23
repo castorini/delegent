@@ -1,5 +1,5 @@
-Delegent
-Copyright 2026 Delegent contributors
+delegent
+Copyright 2026 delegent contributors
 
 This product includes the AREX-Turbo research-agent prompts and tool schemas
 (src/delegent/prompts/arex.py), from https://huggingface.co/BAAI/AREX-Turbo,

@@ -1,7 +1,7 @@
 """Optional merged mode: one Claude Code session that both codes and searches.
 
-By default Delegent keeps the two uses apart: `delegent claude` for coding and `delegent search` for search, whose own
-loop is cheaper on pure search. With `delegent claude --corpus ...`, Delegent also serves the search agent's corpus tools
+By default delegent keeps the two uses apart: `delegent claude` for coding and `delegent search` for search, whose own
+loop is cheaper on pure search. With `delegent claude --corpus ...`, delegent also serves the search agent's corpus tools
 (search, get_document) and the Delegate tool to Claude Code over MCP (streamable HTTP, JSON responses), so tasks that
 mix coding and search, or a session that alternates between them, can stay in one main loop.
 """

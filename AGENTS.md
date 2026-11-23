@@ -1,6 +1,6 @@
 # Guide for coding agents
 
-Delegent is a small Python package (`src/delegent`, under 3,000 lines, dependencies `requests` and `numpy`) that pairs
+delegent is a small Python package (`src/delegent`, under 3,000 lines, dependencies `requests` and `numpy`) that pairs
 a frontier model with a local small language model (SLM). Read [README.md](README.md) for what it does and
 [REPRODUCING.md](REPRODUCING.md) for the paper's settings.
 
