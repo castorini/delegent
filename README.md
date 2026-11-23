@@ -14,9 +14,9 @@
 
 <table align="center">
   <tr>
-    <td align="center"><h2>33%</h2>frontier cost on<br>long-horizon coding<br><sub>DeepSWE, 27B FP8 SLM</sub></td>
-    <td align="center"><h2>41%</h2>frontier cost on<br>agentic search<br><sub>694 questions, 27B FP8 SLM</sub></td>
-    <td align="center"><h2>34%</h2>with a 2B SLM<br>that fits on a laptop<br><sub>DeepSWE, MiniCPM5-2B</sub></td>
+    <td align="center"><h2>&minus;67%</h2>frontier cost on<br>long-horizon coding<br><sub>DeepSWE, 27B FP8 SLM</sub></td>
+    <td align="center"><h2>&minus;59%</h2>frontier cost on<br>agentic search<br><sub>694 questions, 27B FP8 SLM</sub></td>
+    <td align="center"><h2>&minus;66%</h2>with a 2B SLM<br>that fits on a laptop<br><sub>DeepSWE, MiniCPM5-2B</sub></td>
     <td align="center"><h2>No loss</h2>in solved tasks<br>or correct answers<br><sub>nothing is trained</sub></td>
   </tr>
 </table>
@@ -25,7 +25,9 @@ Agents built on frontier models are expensive, because at every step the model r
 that work is legwork: locating code, reproducing a bug, running tests, issuing searches, reading documents.
 **Delegent** keeps the frontier model in charge of every task and hands this legwork to a small language model (SLM)
 running on a GPU you control. The SLM never answers on its own. The frontier model reads its short report, checks what
-matters, and writes the final patch or answer. Nothing is trained, so either model can be swapped.
+matters, and writes the final patch or answer. Nothing is trained, so either model can be swapped. With a 27B FP8
+SLM, Delegent reduces the frontier cost of long-horizon coding by 67% and of agentic search by 59%, with no loss in
+task performance.
 
 **Contents:** [How it works](#how-it-works) · [Results](#results) · [Requirements](#requirements) ·
 [Quick start](#quick-start) · [Usage](#usage) · [Reference](#reference) · [Troubleshooting](#troubleshooting) ·
@@ -64,7 +66,8 @@ their final reports reach the frontier model, never their tool output. On top of
 ## Results
 
 All numbers are from our paper, with GPT-6.1-Sol at high reasoning effort as the frontier model, run in the same
-harness with and without delegation. Cost is the frontier model's cost at API prices with prompt caching.
+harness with and without delegation. Cost is the frontier model's cost at API prices with prompt caching. In the
+tables, "% cost" is the cost relative to the frontier model alone, so 33% cost is a 67% reduction.
 
 ### Long-horizon coding
 
