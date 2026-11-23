@@ -451,7 +451,7 @@ def main(argv=None):
     add_attached(p)
     p.set_defaults(func=cmd_mcp)
 
-    p = sub.add_parser('install', help='optional: use delegent inside your own Claude Code or Codex')
+    p = sub.add_parser('install', help='optional: use Delegent inside your own Claude Code or Codex')
     p.add_argument('agent', choices=['claude', 'codex'])
     add_attached(p)
     p.add_argument('--config-dir', help='the agent\'s config directory (default: ~/.claude or ~/.codex)')

@@ -1,4 +1,4 @@
-"""Which agent loop a task needs: coding (Claude Code on a repository) or search (delegent's search loop on a corpus).
+"""Which agent loop a task needs: coding (Claude Code on a repository) or search (Delegent's search loop on a corpus).
 
 By default the frontier model decides from the task text, with one short call before the task starts; `environment`
 decides from what the task comes with instead (a repository means coding, a corpus means search)."""

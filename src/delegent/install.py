@@ -1,4 +1,4 @@
-"""Optional: delegent inside the agent you already use, instead of the `delegent claude` launcher.
+"""Optional: Delegent inside the agent you already use, instead of the `delegent claude` launcher.
 
 `delegent install claude` and `delegent install codex` set up your own Claude Code or Codex so that it follows the same
 rule as the standalone harness: the main loop keeps your frontier model and your login, and every subagent runs on the
@@ -72,7 +72,7 @@ def _load_settings(path):
 
 
 def _without_block(text):
-    """The text without the delegent block."""
+    """The text without the Delegent block."""
     if BEGIN not in text:
         return text
     head, _, rest = text.partition(BEGIN)
@@ -119,7 +119,7 @@ def install_claude(relay_url, slm_model, hook_command=None, config_dir=None, for
     env = settings.setdefault('env', {})
     current = env.get('ANTHROPIC_BASE_URL')
     if current and current.rstrip('/') not in (relay_url, DEFAULT_ANTHROPIC) and not force:
-        raise InstallError(f'{path} already sets ANTHROPIC_BASE_URL={current}; delegent would replace that gateway '
+        raise InstallError(f'{path} already sets ANTHROPIC_BASE_URL={current}; Delegent would replace that gateway '
                            '(pass --force to do so)')
     if path.exists() and not (home / 'settings.json.delegent-backup').exists():
         shutil.copy2(path, home / 'settings.json.delegent-backup')
@@ -147,7 +147,7 @@ def install_claude(relay_url, slm_model, hook_command=None, config_dir=None, for
     tools = {'Agent', 'Delegate'} if search else {'Agent'}   # as `delegent claude` with and without --corpus
     block = f'{BEGIN}\n{instruction(tools).strip()}\n{END}\n'
     memory.write_text((kept.rstrip('\n') + '\n\n' if kept.strip() else '') + block)
-    done.append(f'{memory}: the delegent instruction (between the delegent markers)')
+    done.append(f'{memory}: the Delegent instruction (between the delegent markers)')
     if search:
         claude_mcp('add', config_dir, claude_bin, search)
         done.append(f'MCP server "{SERVER_NAME}" (user scope): search, get_document and Delegate, served by the relay')
@@ -190,7 +190,7 @@ def uninstall_claude(config_dir=None, claude_bin=None):
             memory.write_text(kept)
         else:
             memory.unlink()
-        done.append(f'{memory}: removed the delegent instruction')
+        done.append(f'{memory}: removed the Delegent instruction')
     return done
 
 
@@ -208,7 +208,7 @@ def slm_catalog_entry(models, slm_model, context_tokens):
     images, hosted web search, the freeform patch tool)."""
     plain = [m for m in models if 'tool_mode' not in m and 'multi_agent_version' not in m] or models
     entry = copy.deepcopy(plain[-1])
-    entry.update(slug=slm_model, display_name=slm_model, description='Local small language model (delegent).',
+    entry.update(slug=slm_model, display_name=slm_model, description='Local small language model (Delegent).',
                  priority=999, visibility='hide', context_window=context_tokens, max_context_window=context_tokens,
                  supported_reasoning_levels=[], default_reasoning_level=None, support_verbosity=False,
                  additional_speed_tiers=[], service_tiers=[], upgrade=None, availability_nux=None,
@@ -248,7 +248,7 @@ supports_parallel_tool_calls = true
         raise InstallError("the instruction cannot contain '''")
     return f"""# Written by `delegent install codex`; remove with `delegent uninstall codex`.
 # Use with: codex -p {PROFILE}
-# The main agent keeps its model and its credentials; subagents run on the SLM behind the delegent relay.
+# The main agent keeps its model and its credentials; subagents run on the SLM behind the Delegent relay.
 model_provider = "delegent"
 model_catalog_json = {_toml(str(catalog_path))}
 developer_instructions = '''
@@ -256,7 +256,7 @@ developer_instructions = '''
 '''
 
 [model_providers.delegent]
-name = "delegent relay"
+name = "Delegent relay"
 base_url = {_toml(relay_url.rstrip('/') + '/codex')}
 {auth}
 wire_api = "responses"

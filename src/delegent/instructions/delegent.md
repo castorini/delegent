@@ -1,4 +1,4 @@
-<!-- delegent instruction. One part per subtask tool; the harness gives the frontier agent the parts for the tools
+<!-- Delegent instruction. One part per subtask tool; the harness gives the frontier agent the parts for the tools
      it has (Claude Code's Agent tool or Codex's spawn_agent on coding, Delegate on search). Marker lines are not shown to the model. -->
 <!-- part: Agent -->
 # Working with subagents
