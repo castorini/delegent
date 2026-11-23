@@ -67,31 +67,31 @@ their final reports reach the frontier model, never their tool output. On top of
 
 All numbers are from our paper, with GPT-6.1-Sol at high reasoning effort as the frontier model, run in the same
 harness with and without delegation. Cost is the frontier model's cost at API prices with prompt caching. In the
-tables, "% cost" is the cost relative to the frontier model alone, so 33% cost is a 67% reduction.
+tables, "cost −67%" means the frontier cost is 67% lower than with the frontier model alone.
 
 ### Long-horizon coding
 
 | Task set | Frontier model alone | + Qwen3.8-27B-FP8 | + MiniCPM5-2B |
 |:--|:-:|:-:|:-:|
-| SWE-bench Verified (50 tasks) | 46 solved, $0.244 | 46 solved, **44%** cost | 47 solved, **53%** cost |
-| SWE-bench Pro (75 tasks) | 63 solved, $0.617 | 63 solved, **37%** cost | 62 solved, **44%** cost |
-| DeepSWE v1.1 (50 tasks) | 29 solved, $2.110 | 29 solved, **33%** cost | 30 solved, **34%** cost |
+| SWE-bench Verified (50 tasks) | 46 solved, $0.244 | 46 solved, cost **−56%** | 47 solved, cost **−47%** |
+| SWE-bench Pro (75 tasks) | 63 solved, $0.617 | 63 solved, cost **−63%** | 62 solved, cost **−56%** |
+| DeepSWE v1.1 (50 tasks) | 29 solved, $2.110 | 29 solved, cost **−67%** | 30 solved, cost **−66%** |
 
 <sub>Dollar amounts are frontier cost per task. On DeepSWE it falls from $2.11 to $0.70 with Qwen3.8-27B-FP8 and to
-$0.71 with MiniCPM5-2B. Even with Qwen3.8-27B-FP8 paid for at API prices, a DeepSWE task costs 38% of the frontier
-model alone.</sub>
+$0.71 with MiniCPM5-2B. Even with Qwen3.8-27B-FP8 paid for at API prices, a DeepSWE task costs 62% less than
+with the frontier model alone.</sub>
 
 ### Agentic search
 
 | Dataset | Frontier model alone | + Qwen3.8-27B-FP8 |
 |:--|:-:|:-:|
-| BrowseComp-Plus, own corpus (200) | 193 correct, $0.114 | 192 correct, **63%** cost |
-| BrowseComp-Plus (80) | 72 correct, $0.211 | 71 correct, **31%** cost |
-| Total Recall QA (68) | 64 correct, $0.048 | 67 correct, **31%** cost |
-| HotpotQA (204) | 198 correct, $0.033 | 198 correct, **25%** cost |
-| DeepSearchQA, find one (71) | 70 correct, $0.067 | 70 correct, **29%** cost |
-| DeepSearchQA, find all (71) | 66 correct, $0.121 | 65 correct, **26%** cost |
-| **All (694)** | **663 correct, $0.091** | **663 correct, 41% cost** |
+| BrowseComp-Plus, own corpus (200) | 193 correct, $0.114 | 192 correct, cost **−37%** |
+| BrowseComp-Plus (80) | 72 correct, $0.211 | 71 correct, cost **−69%** |
+| Total Recall QA (68) | 64 correct, $0.048 | 67 correct, cost **−69%** |
+| HotpotQA (204) | 198 correct, $0.033 | 198 correct, cost **−75%** |
+| DeepSearchQA, find one (71) | 70 correct, $0.067 | 70 correct, cost **−71%** |
+| DeepSearchQA, find all (71) | 66 correct, $0.121 | 65 correct, cost **−74%** |
+| **All (694)** | **663 correct, $0.091** | **663 correct, cost −59%** |
 
 <sub>Dollar amounts are frontier cost per question. All datasets except the first are from the CMASS suite over the
 ClimbMix corpus, searched with BM25.</sub>
@@ -117,7 +117,7 @@ The frontier model behind Delegent can change freely. On DeepSWE, we also ran Cl
 | How it works alone | long loop of edit, test, fix | plans first, then acts |
 | Solved alone | 29 | 34 |
 | Solved with an SLM | 29.5 | 38 |
-| Frontier cost with an SLM | **34%** | **69%** |
+| Frontier cost reduction with an SLM | **66%** | **31%** |
 
 <sub>With an SLM, values average the two SLMs. Delegent saves the most for a frontier model that would otherwise do
 much of the legwork itself.</sub>
