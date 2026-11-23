@@ -19,7 +19,8 @@ class Ledger:
     def add(self, role, model, usage, seconds, **extra):
         row = {'time': round(time.time(), 3), 'role': role, 'model': model, 'seconds': round(seconds, 3),
                'input_tokens': usage.get('input_tokens'), 'cached_input_tokens': usage.get('cached_input_tokens'),
-               'output_tokens': usage.get('output_tokens'), **extra}
+               'output_tokens': usage.get('output_tokens'),
+               **({'cache_write_tokens': usage['cache_write_tokens']} if usage.get('cache_write_tokens') else {}), **extra}
         with self.lock:
             self.rows.append(row)
             if self.path:

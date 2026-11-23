@@ -7,6 +7,11 @@
                    --corpus climbmix --questions questions.jsonl --out runs/search
   delegent index   --corpus corpus/ --out index/
   delegent cost    runs/search/usage.jsonl
+
+Optional, inside the agent you already use (your own Claude Code or Codex, your own frontier model and login):
+  delegent install claude|codex --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 [--corpus climbmix]
+  delegent serve   --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8      (the relay both of them use)
+  delegent uninstall claude|codex
 """
 import argparse
 import concurrent.futures
@@ -18,7 +23,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
+
+import requests
 
 from . import frontier as frontier_backends
 from .ledger import Ledger, cost, load
@@ -87,6 +95,156 @@ def cmd_claude(args):
     relay.shutdown()
     print('\ndelegent: ' + summary(ledger.rows, args.prices), file=sys.stderr)
     sys.exit(code)
+
+
+def serve_args(args):
+    """The `delegent serve` arguments that reproduce this relay."""
+    out = ['--slm', args.slm, '--slm-model', args.slm_model, '--slm-context', str(args.slm_context),
+           '--host', args.host, '--port', str(args.port)]
+    for flag in ('anthropic_upstream', 'openai_upstream', 'ledger', 'corpus'):
+        if getattr(args, flag, None):
+            out += ['--' + flag.replace('_', '-'), str(getattr(args, flag))]
+    if getattr(args, 'corpus', None):   # the relay may be started from any directory (the hook): absolute paths
+        for flag in ('corpus_root', 'index'):
+            if getattr(args, flag, None):
+                out += ['--' + flag.replace('_', '-'), str(Path(getattr(args, flag)).resolve())]
+        out += ['--slm-max-steps', str(args.slm_max_steps)]
+    return out
+
+
+def search_tools(args, ledger):
+    """The corpus tools and Delegate for the attached relay (the same objects as merged mode), if a corpus is given."""
+    if not getattr(args, 'corpus', None):
+        return None
+    from .corpus import open_corpus
+    from .delegate import Delegate
+    from .mcp import Toolset
+    corpus = open_corpus(args.corpus, args.corpus_root, args.index)
+    return Toolset(corpus, Delegate(make_slm(args), corpus, max_steps=args.slm_max_steps), ledger=ledger)
+
+
+def relay_health(url):
+    try:
+        got = requests.get(url + '/health', timeout=2).json()
+        return got if got.get('ok') else None
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def ensure_relay(args):
+    """Start the attached relay in the background unless it is already up."""
+    url, state = f'http://{args.host}:{args.port}', Path.home() / '.delegent'
+    if relay_health(url):
+        return
+    state.mkdir(parents=True, exist_ok=True)
+    with open(state / 'serve.log', 'ab') as log:
+        subprocess.Popen([sys.executable, '-m', 'delegent.cli', 'serve', *serve_args(args)],
+                         stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+    for _ in range(150):
+        if relay_health(url):
+            return
+        time.sleep(0.1)
+    sys.exit(f'delegent: the relay did not start on {url}; see {state / "serve.log"}')
+
+
+def cmd_mcp(args):
+    """The search tools for an agent, over stdio: every MCP message is handed to the relay's /mcp and its answer is
+    written back. An agent starts its MCP servers before its first model call, so this also starts the relay when it
+    is not running; tool calls of one turn run in parallel."""
+    import threading
+    ensure_relay(args)
+    url, lock = f'http://{args.host}:{args.port}/mcp', threading.Lock()
+
+    def handle(line):
+        try:
+            request = json.loads(line)
+        except ValueError:
+            return
+        try:
+            got = requests.post(url, json=request, timeout=(20, 7200))
+            answer = got.json() if got.content else None
+        except (requests.RequestException, ValueError) as exc:
+            answer = ({'jsonrpc': '2.0', 'id': request['id'], 'error': {'code': -32603, 'message': str(exc)[:300]}}
+                      if isinstance(request, dict) and 'id' in request else None)
+        if answer is not None:
+            with lock:
+                sys.stdout.write(json.dumps(answer) + '\n')
+                sys.stdout.flush()
+    workers = []
+    for line in sys.stdin:
+        if line.strip():
+            workers.append(threading.Thread(target=handle, args=(line,)))
+            workers[-1].start()
+    for worker in workers:
+        worker.join()
+
+
+def cmd_serve(args):
+    """The attached relay, for an agent that was set up with `delegent install`: calls that name the SLM are served by
+    the SLM, every other request passes through to the agent's own API with the agent's own credentials."""
+    url = f'http://{args.host}:{args.port}'
+    state = Path.home() / '.delegent'
+    if args.ensure:   # prints nothing (it runs as a hook)
+        return ensure_relay(args)
+    ledger = Ledger(args.ledger or state / 'usage.jsonl')
+    try:
+        tools = search_tools(args, ledger)
+    except (ValueError, RuntimeError, OSError) as exc:
+        sys.exit(f'delegent: cannot open the corpus: {exc}')
+    try:
+        relay = Relay(None, make_slm(args), None, host=args.host, port=args.port, ledger=ledger,
+                      upstream=args.anthropic_upstream, openai_upstream=args.openai_upstream, tools=tools)
+    except OSError as exc:
+        running = relay_health(url)
+        if running:
+            sys.exit(f'delegent: a relay is already serving {running.get("slm_model")} on {url}')
+        sys.exit(f'delegent: cannot listen on {url}: {exc}')
+    print(f'delegent relay on {relay.url}: calls for {args.slm_model} -> {args.slm}; everything else passes through '
+          f'(Claude Code -> {relay.upstream}, Codex -> {relay.openai_upstream})'
+          + (f'; search tools over the {args.corpus} corpus at {relay.url}/mcp' if tools else ''), flush=True)
+    try:
+        relay.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    print('\ndelegent: ' + summary(ledger.rows, args.prices), file=sys.stderr)
+
+
+def cmd_install(args):
+    from . import install
+    url = f'http://{args.host}:{args.port}'
+    try:
+        if args.agent == 'claude':
+            hook = None if args.no_autostart else install.serve_command(serve_args(args))
+            done = install.install_claude(url, args.slm_model, hook, args.config_dir, args.force,
+                                          install.tools_command(serve_args(args)) if args.corpus else None,
+                                          args.claude_bin)
+            after = ('Run `claude` as usual. The relay starts with the session'
+                     if hook else 'Start the relay with `delegent serve ...`, then run `claude` as usual')
+        else:
+            done = install.install_codex(url, args.slm_model, args.slm_context, args.config_dir, args.codex_bin,
+                                         args.env_key, args.openai_auth,
+                                         install.tools_command(serve_args(args)) if args.corpus else None)
+            after = (f'Run Codex with the profile: codex -p {install.PROFILE}\nThe relay starts with the session'
+                     if args.corpus else
+                     'Start the relay: delegent serve ' + ' '.join(a for a in serve_args(args)
+                                                                   if a not in ('--host', '127.0.0.1'))
+                     + f'\nThen run Codex with the profile: codex -p {install.PROFILE}')
+    except install.InstallError as exc:
+        sys.exit(f'delegent: {exc}')
+    for line in done:
+        print('  ' + line)
+    print(after + f'.\nUndo with: delegent uninstall {args.agent}')
+
+
+def cmd_uninstall(args):
+    from . import install
+    try:
+        done = (install.uninstall_claude(args.config_dir, args.claude_bin) if args.agent == 'claude'
+                else install.uninstall_codex(args.config_dir))
+    except install.InstallError as exc:
+        sys.exit(f'delegent: {exc}')
+    for line in done or ['nothing to remove']:
+        print('  ' + line)
 
 
 def prices_from(items):
@@ -269,6 +427,48 @@ def main(argv=None):
     p.add_argument('--prices', action='append', help=price_help)
     p.add_argument('claude_args', nargs=argparse.REMAINDER, help='extra arguments for claude (after --)')
     p.set_defaults(func=cmd_run)
+
+    def add_attached(p):
+        add_models(p, frontier=False)
+        p.add_argument('--host', default='127.0.0.1')
+        p.add_argument('--port', type=int, default=8787)
+        p.add_argument('--anthropic-upstream', help='where Claude Code\'s own calls go (default: the Anthropic API)')
+        p.add_argument('--openai-upstream', help='where Codex\'s own calls go (default: https://api.openai.com/v1)')
+        p.add_argument('--ledger', help='usage ledger (default: ~/.delegent/usage.jsonl)')
+        p.add_argument('--corpus', choices=['climbmix', 'local'],
+                       help='also give the agent search, get_document and Delegate over this corpus')
+        p.add_argument('--corpus-root', help='local corpus directory (with --corpus local)')
+        p.add_argument('--index', help='local BM25 index (with --corpus local)')
+        p.add_argument('--slm-max-steps', type=int, default=80, help='step cap of a delegated search subagent')
+
+    p = sub.add_parser('serve', help='optional: the relay for an agent set up with `delegent install`')
+    add_attached(p)
+    p.add_argument('--ensure', action='store_true', help='start it in the background unless it is already running')
+    p.add_argument('--prices', action='append', help=price_help)
+    p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser('mcp', help='the search tools of the relay over stdio (set up by `delegent install --corpus`)')
+    add_attached(p)
+    p.set_defaults(func=cmd_mcp)
+
+    p = sub.add_parser('install', help='optional: use Delegent inside your own Claude Code or Codex')
+    p.add_argument('agent', choices=['claude', 'codex'])
+    add_attached(p)
+    p.add_argument('--config-dir', help='the agent\'s config directory (default: ~/.claude or ~/.codex)')
+    p.add_argument('--no-autostart', action='store_true', help='claude: do not add the hook that starts the relay')
+    p.add_argument('--force', action='store_true', help='claude: replace an ANTHROPIC_BASE_URL that is already set')
+    p.add_argument('--codex-bin')
+    p.add_argument('--claude-bin')
+    p.add_argument('--env-key', default='OPENAI_API_KEY', help='codex: environment variable with your API key')
+    p.add_argument('--openai-auth', action='store_true',
+                   help='codex: use Codex\'s own OpenAI login instead of an API key variable (untested)')
+    p.set_defaults(func=cmd_install)
+
+    p = sub.add_parser('uninstall', help='remove what `delegent install` added')
+    p.add_argument('agent', choices=['claude', 'codex'])
+    p.add_argument('--config-dir')
+    p.add_argument('--claude-bin')
+    p.set_defaults(func=cmd_uninstall)
 
     p = sub.add_parser('index', help='build a BM25 index over a local corpus')
     p.add_argument('--corpus', required=True)

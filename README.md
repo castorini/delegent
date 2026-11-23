@@ -27,6 +27,12 @@ that work is legwork: locating code, reproducing a bug, running tests, issuing s
 running on a GPU you control. The SLM never answers on its own. The frontier model reads its short report, checks what
 matters, and writes the final patch or answer. Nothing is trained, so either model can be swapped.
 
+**Contents:** [How it works](#how-it-works) · [Results](#results) · [Requirements](#requirements) ·
+[Quick start](#quick-start) · [Usage](#usage) · [Reference](#reference) · [Troubleshooting](#troubleshooting) ·
+[Security and privacy](#security-and-privacy) · [Development](#development) ·
+[For coding agents](#for-coding-agents) · [Reproducing the paper](#reproducing-the-paper) · [Citation](#citation) ·
+[License](#license)
+
 ## How it works
 
 <p align="center">
@@ -112,6 +118,19 @@ The frontier model behind Delegent can change freely. On DeepSWE, we also ran Cl
 
 <sub>With an SLM, values average the two SLMs. Delegent saves the most for a frontier model that would otherwise do
 much of the legwork itself.</sub>
+
+## Requirements
+
+| What | Needed for | Notes |
+|:--|:--|:--|
+| Python 3.10 or later | everything | the only Python dependencies are `requests` and `numpy` |
+| An SLM behind [vLLM](https://docs.vllm.ai) | everything | one GPU per replica; the commands in the quick start serve the two SLMs of the paper |
+| A frontier model API key | `delegent claude`, `delegent search`, `delegent run` | `OPENAI_API_KEY` for GPT models, `ANTHROPIC_API_KEY` for Claude models |
+| [Claude Code](https://code.claude.com/docs) (`claude` on your `PATH`) | coding | the paper used 2.1.232; the integrations were tested with 2.1.325 |
+| [Codex](https://github.com/openai/codex) (`codex` on your `PATH`) | `delegent install codex` only | tested with 0.162.1 |
+| A ClimbMix search endpoint | `--corpus climbmix` only | `CLIMBMIX_API` and `CLIMBMIX_TOKEN`; your own documents need nothing beyond `delegent index` |
+
+Delegent runs on Linux and macOS. The SLM can be on another machine: `--slm` takes any reachable vLLM URL.
 
 ## Quick start
 
@@ -204,7 +223,68 @@ Prices are dollars per million uncached input, cached input and output tokens; r
 
 ### Optional extras
 
-Neither is needed to reproduce the paper, which runs coding and search in separate loops as above.
+None of these is needed to reproduce the paper, which runs coding and search in separate loops as above.
+
+#### Inside your own Claude Code or Codex
+
+`delegent claude` is a launcher: it starts Claude Code with its own configuration and its own frontier backend. If you
+would rather keep the agent you already use, with your own login, settings and frontier model, install Delegent into
+it. Both integrations follow the same rule as the launcher, routed by the same relay: the main loop keeps your
+frontier model, and every subagent runs on the SLM.
+
+```bash
+# Claude Code: afterwards, run `claude` as usual
+delegent install claude --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8
+
+# Codex: afterwards, start the relay and run Codex with the profile
+delegent install codex --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8
+delegent serve --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8
+codex -p delegent
+```
+
+To give the agent search as well, add a corpus to the same command. The session then also has `search`,
+`get_document` and `Delegate`, whose SLM subagent searches the corpus in its own loop and returns a report with checked
+evidence, and the instruction covers both kinds of delegation. This is what `--corpus` adds to `delegent claude`.
+
+```bash
+delegent install claude --slm http://localhost:8000 --slm-model Qwen3.8-27B-FP8 \
+  --corpus local --corpus-root docs/ --index index/      # or --corpus climbmix
+```
+
+`delegent uninstall claude` and `delegent uninstall codex` remove exactly what was added.
+
+| | Claude Code | Codex |
+|:--|:--|:--|
+| What is installed | Three `env` entries in `settings.json`, the coding instruction in your user-level `CLAUDE.md`, and a `SessionStart` hook that starts the relay | A profile, `delegent.config.toml`, and a copy of Codex's model catalog with the SLM added; your `config.toml` is not edited |
+| Main loop | Your Claude model with your own login or API key, passed through unchanged | Your OpenAI model with your API key (`OPENAI_API_KEY`), passed through unchanged |
+| Subagents | Claude Code's own subagents (the Agent tool), on the SLM | Codex's own subagents (`spawn_agent`), on the SLM by default |
+| Instruction | The same text as `delegent claude` | The same text, with Codex's tool names |
+| Search (with `--corpus`) | `search`, `get_document` and `Delegate` as an MCP server, as in the merged mode | The same MCP server; Codex finds the tools through its tool search |
+| Relay | Starts with the session | Starts with the session when installed with `--corpus`; otherwise run `delegent serve` |
+
+The relay (`delegent serve`) serves only the calls that name the SLM. Every other request goes to the Anthropic or
+OpenAI API exactly as your agent sent it, with your agent's own credentials, and the answer comes back byte for byte.
+With a corpus, it also serves the search tools, and `Delegate` runs the same subagent loop and evidence check as
+`delegent search`. It listens on `127.0.0.1:8787` and writes the usage of both models to `~/.delegent/usage.jsonl`,
+which `delegent cost` reads.
+
+**What to expect.** In Claude Code, the integration runs the same code as `delegent claude` for everything that
+matters to the result: the same Claude Code agent loop and Agent tool, the same roles for the SLM, the same relay code
+for SLM calls (token counting, window clamping, replica pinning) and the same instruction. What differs is around it:
+the frontier model is a Claude model, for which the paper measured a smaller saving than for GPT-6.1-Sol (see
+[Two frontier models](#two-frontier-models)), and your own `CLAUDE.md`, plugins and MCP servers stay in the context.
+In Codex, the rule and the instruction are the same, but the agent loop, tools and subagents are Codex's own, which the
+paper did not evaluate.
+
+We tested both integrations end to end with the real CLIs (Claude Code 2.1.325, Codex 0.162.1) against scripted model
+servers, on a coding task and on a search question: the main loop's calls pass through with the agent's own
+credentials, a spawned subagent's calls reach the SLM, a `Delegate` call runs the search subagent on the SLM, and the
+reports return to the main loop. In Claude Code, the same scripted runs through `delegent claude` gave the same
+sequence of model calls, the same subagent conversations and the same `Delegate` report. We have not benchmarked the
+integrations. For Codex, your vLLM version must serve the OpenAI Responses API, and signing in with ChatGPT instead of
+an API key (`--openai-auth`) is untested. As in the merged mode below, search inside a coding agent costs more than
+the separate search loop of `delegent search`. Anthropic does not officially support routing Claude Code's calls to
+non-Claude models through a gateway, which applies to `delegent claude` as well.
 
 #### One command that picks the loop
 
@@ -245,6 +325,119 @@ Qwen3.8-27B-FP8:
 halves Claude Code's own cost on search, but Claude Code's main loop makes about twice as many calls as the search loop,
 and delegated searches in it took longer (median 747 s per question).</sub>
 
+## Reference
+
+### Commands
+
+Every command is non-interactive: it reads its arguments and environment, never prompts, and `delegent <command>
+--help` lists all options.
+
+| Command | What it does |
+|:--|:--|
+| `delegent claude` | starts Claude Code through the relay, with the instruction; arguments after `--` go to Claude Code |
+| `delegent search` | answers a file of questions with the search loop; writes one JSON file per question |
+| `delegent run` | picks coding or search for one task, then runs it as `claude` or `search` would |
+| `delegent index` | builds a BM25 index over a directory of documents |
+| `delegent cost` | prints the calls and the frontier cost of a usage ledger |
+| `delegent relay` | serves the relay on its own, for another agent that speaks the Anthropic Messages API |
+| `delegent install claude\|codex` | sets up your own Claude Code or Codex (see [above](#inside-your-own-claude-code-or-codex)) |
+| `delegent uninstall claude\|codex` | removes what `install` added |
+| `delegent serve` | the relay for an installed agent; `--ensure` starts it in the background if it is not running |
+| `delegent mcp` | the search tools over stdio; started by the installed agent, not by you |
+
+Exit status: 0 on success. A setup problem (a missing program, an unreachable port, an invalid corpus) exits with a
+non-zero status and one line on stderr that starts with `delegent:`. `delegent claude` exits with Claude Code's own
+status. `delegent search` exits 0 even when single questions fail: a failed question is written as
+`{"id": ..., "error": ...}`, and a rerun skips every question that already has a file, so delete the files with an
+`error` to retry them.
+
+### Configuration
+
+Models and endpoints are command-line options. The environment holds credentials and a few overrides.
+
+| Variable | Used by | Meaning |
+|:--|:--|:--|
+| `OPENAI_API_KEY` | launcher, search | key for a GPT frontier model |
+| `ANTHROPIC_API_KEY` | launcher, search | key for a Claude frontier model |
+| `DELEGENT_SLM_API_KEY` | everything | key sent to vLLM, if yours requires one (default `EMPTY`) |
+| `DELEGENT_QWEN_EFFORT` | coding | reasoning effort of a Qwen SLM (default `medium`) |
+| `CLIMBMIX_API`, `CLIMBMIX_TOKEN` | `--corpus climbmix` | base URL and token of the ClimbMix search endpoint; `CLIMBMIX_TOKEN_FILE` reads the token from a file |
+| `CLIMBMIX_CACHE` | `--corpus climbmix` | where searches and documents are cached (default `~/.cache/delegent/climbmix`) |
+| `DELEGENT_OPENAI_URL`, `DELEGENT_ANTHROPIC_URL` | launcher, search | full URL of the frontier API, to go through your own gateway |
+| `DELEGENT_OPENAI_API` | `delegent serve` | base URL that Codex's own calls pass through to (also `--openai-upstream`) |
+| `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | `install`, `uninstall` | the agent's config directory, if not `~/.claude` or `~/.codex` (also `--config-dir`) |
+
+### Files Delegent writes
+
+| File | Written by | Contents |
+|:--|:--|:--|
+| `delegent-usage.jsonl` (or `--ledger`) | `claude`, `run`, `relay` | the usage ledger, one JSON line per model call |
+| `<out>/usage.jsonl`, `<out>/questions/<id>.json` | `search` | the ledger and one result per question |
+| `~/.delegent/usage.jsonl`, `~/.delegent/serve.log` | `serve` | the ledger and the log of a relay started in the background |
+| `~/.cache/delegent/climbmix/` | `--corpus climbmix` | cached searches and documents |
+
+A ledger line has `time`, `role` (`frontier` or `slm`), `model`, `seconds`, `input_tokens` (cached tokens included),
+`cached_input_tokens` and `output_tokens`, plus `error` when the call failed and `subtask: true` for the SLM usage of
+one delegated search. A search result has `id`, `question`, `answer`, `frontier_calls`, `frontier_input_tokens`,
+`frontier_cached_tokens`, `frontier_output_tokens`, `seconds`, `slm_calls`, `delegations` (one entry per `Delegate`
+call, with its task, report and SLM usage) and `actions` (one entry per frontier step).
+
+The relay answers `GET /health` with `{"ok": true, ...}`, which is how to check that it is up.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|:--|:--|
+| `Claude Code (claude) not found` | install Claude Code, or pass `--claude-bin` |
+| `OPENAI_API_KEY is not set` (or `ANTHROPIC_API_KEY`) | export the key of the frontier model you named with `--frontier` |
+| `SLM rejected the request` with a tool-calling error | start vLLM with `--enable-auto-tool-choice` and the tool-call parser of your model, as in the quick start |
+| Claude Code prints `[claude-code:unrecognized_model]` for the SLM | expected: Claude Code does not know the SLM's name; the call still goes to the SLM |
+| `cannot listen on http://127.0.0.1:8787` | another program uses the port; pass `--port` to `install` and `serve` |
+| `the relay did not start` | read `~/.delegent/serve.log`; usually the SLM endpoint or the corpus path is wrong |
+| Claude Code cannot reach its model after `delegent install claude --no-autostart` | the relay is not running: start `delegent serve`, or run `delegent uninstall claude` |
+| `already sets ANTHROPIC_BASE_URL` | your Claude Code already goes through a gateway; `--force` replaces it |
+| `this Codex version did not accept the profile or the SLM catalog entry` | Codex changed its catalog format; nothing was installed. Please open an issue with your Codex version |
+| The agent does not list `Delegate` | current Claude Code and Codex load MCP tools on demand; check that the `corpus` server is connected with `claude mcp list` or `codex -p delegent mcp list` |
+| `set CLIMBMIX_API to the base URL of a ClimbMix search endpoint` | `CLIMBMIX_API` is not a URL |
+
+## Security and privacy
+
+- **The relay listens on `127.0.0.1` only.** The launcher's relay also requires a random token that only its own
+  Claude Code session knows. The relay of an installed agent (`delegent serve`) has no token, so any program on your
+  machine can send requests to your SLM through it; requests for other models still need their own credentials.
+- **Credentials are not stored or logged.** An installed agent's requests to Anthropic or OpenAI are forwarded with
+  the agent's own headers and nothing is kept. The ledger holds token counts and model names, not prompts or keys.
+- **Subtasks go to your SLM in full.** A coding subagent sees the files and command output it works with, as it would
+  on the frontier model. Search results keep the questions, answers and delegated tasks under `--out`.
+- **The SLM runs tools.** A coding subagent is a Claude Code or Codex subagent with that agent's tools and
+  permissions, so the usual care with `--permission-mode bypassPermissions` applies to it as well.
+
+## Development
+
+```bash
+git clone https://github.com/castorini/delegent.git
+cd delegent
+pip install -e ".[test]"
+pytest
+```
+
+The tests are offline: fake model servers stand in for the frontier API and for vLLM, so they need no GPU, no key and
+no network. Bug reports and pull requests are welcome on [GitHub](https://github.com/castorini/delegent/issues); please
+include the command you ran, your Claude Code or Codex version, and the `delegent:` line or traceback you got.
+
+## For coding agents
+
+If you are an AI agent working with this repository, [AGENTS.md](AGENTS.md) has the short version: how to set up and
+test, where things are, and what not to change. The facts an agent most often needs:
+
+- Every command is non-interactive and documented by `delegent <command> --help`.
+- To run a coding task headlessly, use `delegent claude ... -- -p "<task>" --permission-mode bypassPermissions`; the
+  final answer is on stdout and the cost summary on stderr.
+- To answer questions, use `delegent search`; read results from `<out>/questions/<id>.json`, not from stdout.
+- To check that a relay is up, `GET /health`. To read spending, `delegent cost <ledger>`.
+- `delegent install` changes the user's own agent configuration. Run it only when the user asks for it, and prefer
+  `--config-dir` on a scratch directory when you only want to test.
+
 ## Reproducing the paper
 
 [REPRODUCING.md](REPRODUCING.md) lists the models, limits and prompts behind the results above, and
@@ -255,18 +448,33 @@ and delegated searches in it took longer (median 747 s per question).</sub>
 
 | Path | Contents |
 |:--|:--|
-| `src/delegent/relay.py` | the relay: Anthropic Messages API in, routing by role, one usage ledger |
+| `src/delegent/relay.py` | the relay: Anthropic Messages API in, routing by role, one usage ledger; attached (`delegent serve`), it passes the agent's own calls through |
 | `src/delegent/frontier.py` | frontier backends: OpenAI Responses (with the Anthropic translation) and Anthropic |
 | `src/delegent/slm.py` | SLM backend: vLLM replicas, conversation pinning, window clamping |
 | `src/delegent/delegate.py` | the `Delegate` tool, the SLM search subagent and the evidence check |
 | `src/delegent/agent.py` | the search agent loop |
-| `src/delegent/mcp.py` | optional merged mode: corpus tools and `Delegate` for Claude Code over MCP |
+| `src/delegent/mcp.py` | corpus tools and `Delegate` over MCP, for the merged mode and the integrations |
+| `src/delegent/install.py` | optional: `delegent install claude\|codex`, Delegent inside your own agent |
 | `src/delegent/corpus.py`, `bm25.py` | ClimbMix client and local BM25 index |
 | `src/delegent/instructions/delegent.md` | the instruction for coding and search |
 | `samples/` | task and question ids of the paper's evaluation |
 | `tests/` | offline tests with fake model servers (`pytest`) |
+| `AGENTS.md`, `CLAUDE.md` | guidance for coding agents working in this repository |
 
 </details>
+
+## Citation
+
+If you use Delegent, please cite our paper:
+
+```bibtex
+@article{gu2026delegent,
+  title   = {Delegent: A Multi-Agent Harness That Reduces Cost without Sacrificing Performance},
+  author  = {Gu, Lingwei and Lin, Jimmy},
+  journal = {arXiv preprint},
+  year    = {2026}
+}
+```
 
 ## License
 

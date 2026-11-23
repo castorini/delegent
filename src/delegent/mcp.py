@@ -15,24 +15,12 @@ from .delegate import DELEGATE_TOOL
 SERVER_NAME = 'corpus'   # Claude Code names the tools mcp__corpus__search, mcp__corpus__Delegate, ...
 
 
-class CorpusTools(ThreadingHTTPServer):
-    daemon_threads = True
+class Toolset:
+    """The corpus tools and Delegate as MCP methods. `CorpusTools` serves them on a port of its own (merged mode); the
+    attached relay serves the same object at /mcp (`delegent serve --corpus`)."""
 
-    def __init__(self, corpus, delegate=None, ledger=None, host='127.0.0.1', port=0):
-        super().__init__((host, port), Handler)
+    def __init__(self, corpus, delegate=None, ledger=None):
         self.corpus, self.delegate, self.ledger = corpus, delegate, ledger
-
-    @property
-    def url(self):
-        return f'http://{self.server_address[0]}:{self.server_address[1]}/mcp'
-
-    def start(self):
-        threading.Thread(target=self.serve_forever, daemon=True).start()
-        return self
-
-    def config(self):
-        """The --mcp-config file content for Claude Code."""
-        return {'mcpServers': {SERVER_NAME: {'type': 'http', 'url': self.url}}}
 
     def tools(self):
         return [{'name': t['name'], 'description': t['description'], 'inputSchema': t['input_schema'],
@@ -64,6 +52,37 @@ class CorpusTools(ThreadingHTTPServer):
             return {'content': [{'type': 'text', 'text': out}], 'isError': out.startswith('error:')}
         raise ValueError(f'unknown method {method}')
 
+    def respond(self, req):
+        """One JSON-RPC request -> (HTTP status, JSON-RPC answer or None)."""
+        if 'id' not in req:   # a notification
+            return 202, None
+        try:
+            return 200, {'jsonrpc': '2.0', 'id': req['id'],
+                         'result': self.call(req.get('method'), req.get('params') or {})}
+        except Exception as exc:   # noqa: BLE001
+            return 200, {'jsonrpc': '2.0', 'id': req['id'],
+                         'error': {'code': -32603, 'message': f'{type(exc).__name__}: {exc}'[:500]}}
+
+
+class CorpusTools(Toolset, ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, corpus, delegate=None, ledger=None, host='127.0.0.1', port=0):
+        ThreadingHTTPServer.__init__(self, (host, port), Handler)
+        Toolset.__init__(self, corpus, delegate, ledger)
+
+    @property
+    def url(self):
+        return f'http://{self.server_address[0]}:{self.server_address[1]}/mcp'
+
+    def start(self):
+        threading.Thread(target=self.serve_forever, daemon=True).start()
+        return self
+
+    def config(self):
+        """The --mcp-config file content for Claude Code."""
+        return {'mcpServers': {SERVER_NAME: {'type': 'http', 'url': self.url}}}
+
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
@@ -88,11 +107,4 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers.get('Content-Length') or 0)) or b'{}')
-        if 'id' not in req:   # a notification
-            return self.reply(202)
-        try:
-            result = self.server.call(req.get('method'), req.get('params') or {})
-            self.reply(200, {'jsonrpc': '2.0', 'id': req['id'], 'result': result})
-        except Exception as exc:   # noqa: BLE001
-            self.reply(200, {'jsonrpc': '2.0', 'id': req['id'],
-                             'error': {'code': -32603, 'message': f'{type(exc).__name__}: {exc}'[:500]}})
+        self.reply(*self.server.respond(req))

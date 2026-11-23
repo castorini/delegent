@@ -73,3 +73,16 @@ $0.0005 per task, which the paper's cost figures do not include.
 `delegent claude --corpus ...` serves `search`, `get_document` and `Delegate` to Claude Code over MCP
 (`src/delegent/mcp.py`), so one Claude Code session can code and search. The paper runs search in the separate search
 loop. The README compares both on 80 BrowseComp-Plus questions over ClimbMix.
+
+## Integrations (not used in the paper)
+
+`delegent install claude` and `delegent install codex` (`src/delegent/install.py`) set up an existing Claude Code or
+Codex instead of launching one. Claude Code gets the roles that `delegent claude` assigns
+(`CLAUDE_CODE_SUBAGENT_MODEL` and `ANTHROPIC_DEFAULT_HAIKU_MODEL` name the SLM) and the same instruction, and the
+relay passes its frontier calls through to Anthropic instead of translating them. The settings that `delegent claude`
+also fixes for the paper's runs are left to the user's own configuration: the 1M-token frontier context, the
+32,768-token output cap, no retries, and a clean configuration directory. Codex gets the SLM as its default subagent
+model, a model-catalog entry for it with the SLM's context window, the v1 subagent tools (plain-text tasks, fresh
+context) and the instruction with Codex's tool names. With `--corpus`, either agent also gets the merged mode's MCP
+tools (`search`, `get_document`, `Delegate`) from the relay, with the same subagent loop, sampling and evidence check
+as `delegent search`. The paper's experiments ran neither.

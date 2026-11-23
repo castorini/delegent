@@ -1,5 +1,5 @@
 <!-- Delegent instruction. One part per subtask tool; the harness gives the frontier agent the parts for the tools
-     it has (Claude Code's Agent tool on coding, Delegate on search). Marker lines are not shown to the model. -->
+     it has (Claude Code's Agent tool or Codex's spawn_agent on coding, Delegate on search). Marker lines are not shown to the model. -->
 <!-- part: Agent -->
 # Working with subagents
 
@@ -14,6 +14,22 @@ conversation, so the cheapest plan is the one with the fewest steps of your own.
 - Ask each subagent for a short report, at most 150 words: only the facts you need, with file paths, line numbers and
   exact error messages.
 - Do not keep a task list (TaskCreate / TaskUpdate / TaskList / TaskGet) for this job; keep your plan in your own messages.
+- Subagent reports can be wrong: check a fact yourself before your fix depends on it.
+<!-- part: Codex -->
+# Working with subagents
+
+Subagents (spawn_agent) run on a small, fast model and cost far less than you. Every step you take re-reads the whole
+conversation, so the cheapest plan is the one with the fewest steps of your own. Use subagents for the work below.
+
+- Delegate investigation (find the code involved in the issue and explain how it works; write a minimal script that
+  reproduces the bug and report its output) and verification (run the reproduction and the relevant tests; report only
+  what fails). Make the code changes yourself.
+- Spawn independent subagents in the same turn, each with a self-contained task and without your history, and leave
+  `model` unset, so they run on the small model. Then wait for their reports (wait_agent, with a long timeout) instead
+  of polling or doing their work yourself.
+- Ask each subagent for a short report, at most 150 words: only the facts you need, with file paths, line numbers and
+  exact error messages.
+- Do not keep a plan or goal list for this job; keep your plan in your own messages.
 - Subagent reports can be wrong: check a fact yourself before your fix depends on it.
 <!-- part: Delegate -->
 You have a research assistant: the Delegate tool hands it a focused subtask; it searches the same corpus with its own
