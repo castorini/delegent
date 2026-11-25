@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2611.33098"><img alt="arXiv 2611.33098" src="https://img.shields.io/badge/arXiv-2611.33098-b31b1b.svg"></a>
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
   <img alt="Built on Claude Code" src="https://img.shields.io/badge/built%20on-Claude%20Code-orange.svg">
@@ -65,7 +66,7 @@ their final reports reach the frontier model, never their tool output. On top of
 
 ## Results
 
-All numbers are from our paper, with GPT-6.1-Sol at high reasoning effort as the frontier model, run in the same
+All numbers are from [our paper](https://arxiv.org/abs/2611.33098), with GPT-6.1-Sol at high reasoning effort as the frontier model, run in the same
 harness with and without delegation. Cost is the frontier model's cost at API prices with prompt caching. In the
 tables, "cost −67%" means the frontier cost is 67% lower than with the frontier model alone.
 
@@ -468,14 +469,15 @@ test, where things are, and what not to change. The facts an agent most often ne
 
 ## Citation
 
-If you use Delegent, please cite our paper:
+If you use Delegent, please cite [our paper](https://arxiv.org/abs/2611.33098):
 
 ```bibtex
 @article{gu2026delegent,
   title   = {Delegent: A Multi-Agent Harness That Reduces Cost without Sacrificing Performance},
   author  = {Gu, Lingwei and Lin, Jimmy},
-  journal = {arXiv preprint},
-  year    = {2026}
+  journal = {arXiv preprint arXiv:2611.33098},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2611.33098}
 }
 ```
 
